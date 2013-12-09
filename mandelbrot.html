@@ -59,18 +59,18 @@ void main()
 </script>
 
 <script type="text/javascript">
-function draw(gl, vertex_position, quad_buffer)
+var canvas, gl, vertex_position, quad_buffer;
+function draw()
 {
 	gl.clear(gl.COLOR_BUFFER_BIT);
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	gl.vertexAttribPointer(vertex_position, 2, gl.FLOAT, false, 0, 0);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
-
 function start()
 {
-	var canvas = document.getElementById("canvas");
-	var gl = canvas.getContext("webgl");
+	canvas = document.getElementById("canvas");
+	gl = canvas.getContext("webgl");
 
 	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
 	gl.shaderSource(vertex_shader, document.getElementById("vertex-shader").text);
@@ -102,17 +102,17 @@ function start()
 
 	gl.useProgram(program);
 
-	var vertex_position = gl.getAttribLocation(program, "vertex_position");
+	vertex_position = gl.getAttribLocation(program, "vertex_position");
 	gl.enableVertexAttribArray(vertex_position);
 
 	gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-	var quad_buffer = gl.createBuffer();
+	quad_buffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	var vertices = [ 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0 ];
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-	draw(gl, vertex_position, quad_buffer);
+	draw();
 }
 </script>
 </head>
