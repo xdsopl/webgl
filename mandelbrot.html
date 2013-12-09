@@ -31,9 +31,9 @@ vec4 srgb(float r, float g, float b)
 	float a = 0.055;
 	float phi = 12.92;
 	float gamma = 2.4;
-	r = r <= K0 ? r / phi : pow((r + a) / (1.0 + a), gamma);
-	g = g <= K0 ? g / phi : pow((g + a) / (1.0 + a), gamma);
-	b = b <= K0 ? b / phi : pow((b + a) / (1.0 + a), gamma);
+	r = r <= K0 / phi ? r * phi : (1.0 + a) * pow(r, 1.0 / gamma) - a;
+	g = g <= K0 / phi ? g * phi : (1.0 + a) * pow(g, 1.0 / gamma) - a;
+	b = b <= K0 / phi ? b * phi : (1.0 + a) * pow(b, 1.0 / gamma) - a;
 #endif
 	return vec4(r, g, b, 1.0);
 }
