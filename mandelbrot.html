@@ -7,10 +7,12 @@
 <script id="vertex-shader" type="x-shader/x-vertex">
 attribute vec2 vertex_position;
 varying vec2 fragment_position;
+uniform vec2 offset;
+uniform float zoom;
 void main()
 {
 	gl_Position = vec4(vertex_position, 0.0, 1.0);
-	fragment_position = vertex_position;
+	fragment_position = zoom * vertex_position + offset;
 }
 </script>
 
@@ -47,7 +49,7 @@ vec4 rainbow(float v)
 void main()
 {
 	vec2 z = vec2(0.0, 0.0);
-	vec2 c = 2.0 * fragment_position - vec2(0.5, 0);
+	vec2 c = fragment_position;
 	float counter = 0.0;
 	for (int i = 0; i < 100; i++) {
 		counter += dot(z, z) < 4.0 ? 1.0 : 0.0;
@@ -59,18 +61,31 @@ void main()
 </script>
 
 <script type="text/javascript">
-function draw(gl, vertex_position, quad_buffer)
+var canvas, gl, vertex_position, quad_buffer;
+var uniform_zoom, uniform_offset;
+var zoom = 2.0, off_x = -0.5, off_y = 0.0;
+function draw()
 {
 	gl.clear(gl.COLOR_BUFFER_BIT);
+	gl.uniform2f(uniform_offset, off_x, off_y);
+	gl.uniform1f(uniform_zoom, zoom);
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	gl.vertexAttribPointer(vertex_position, 2, gl.FLOAT, false, 0, 0);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
-
+function mouse_down(event)
+{
+	var x = 2.0 * (event.pageX - canvas.offsetLeft) / canvas.width - 1.0;
+	var y = 1.0 - 2.0 * (event.pageY - canvas.offsetTop) / canvas.height;
+	off_x += x * zoom;
+	off_y += y * zoom;
+	zoom /= 2.0;
+	draw();
+}
 function start()
 {
-	var canvas = document.getElementById("canvas");
-	var gl = canvas.getContext("webgl");
+	canvas = document.getElementById("canvas");
+	gl = canvas.getContext("webgl");
 
 	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
 	gl.shaderSource(vertex_shader, document.getElementById("vertex-shader").text);
@@ -102,17 +117,21 @@ function start()
 
 	gl.useProgram(program);
 
-	var vertex_position = gl.getAttribLocation(program, "vertex_position");
+	vertex_position = gl.getAttribLocation(program, "vertex_position");
 	gl.enableVertexAttribArray(vertex_position);
+	uniform_offset = gl.getUniformLocation(program, "offset");
+	uniform_zoom = gl.getUniformLocation(program, "zoom");
 
 	gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-	var quad_buffer = gl.createBuffer();
+	quad_buffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	var vertices = [ 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0 ];
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-	draw(gl, vertex_position, quad_buffer);
+	draw();
+
+	canvas.addEventListener("mousedown", mouse_down, false);
 }
 </script>
 </head>
