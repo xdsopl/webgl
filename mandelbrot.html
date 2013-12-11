@@ -41,9 +41,9 @@ vec4 srgb(float r, float g, float b)
 }
 vec4 rainbow(float v)
 {
-	float r = 4.0 * v - 2.0;
-	float g = 2.0 - 4.0 * abs(v - 0.5);
-	float b = 2.0 - 4.0 * v;
+	float r = 6.0 * abs(v - 3.0 / 6.0) - 1.0;
+	float g = 2.0 - 6.0 * abs(v - 2.0 / 6.0);
+	float b = 2.0 - 6.0 * abs(v - 4.0 / 6.0);
 	return srgb(r, g, b);
 }
 void main()
