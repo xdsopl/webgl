@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>srgb gamma correction</title>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+attribute vec2 vertex_position;
+varying vec2 fragment_position;
+void main()
+{
+	gl_Position = vec4(vertex_position, 0.0, 1.0);
+	fragment_position = vertex_position;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+precision mediump float;
+varying vec2 fragment_position;
+float srgb(float v)
+{
+	v = clamp(v, 0.0, 1.0);
+#if 1
+	float K0 = 0.03928;
+	float a = 0.055;
+	float phi = 12.92;
+	float gamma = 2.4;
+	v = v <= K0 / phi ? v * phi : (1.0 + a) * pow(v, 1.0 / gamma) - a;
+#endif
+	return v;
+}
+void main()
+{
+	vec4 white = vec4(1.0, 1.0, 1.0, 1.0);
+	vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
+	float tmp = srgb(0.5);
+	vec4 gray = vec4(tmp, tmp, tmp, 1.0);
+	vec2 rest = mod(gl_FragCoord.xy, 2.0);
+	gl_FragColor = rest[0] < 1.0 ^^ rest[1] < 1.0 ? black : white;
+	gl_FragColor = length(fragment_position) < 0.5 ? gray : gl_FragColor;
+}
+</script>
+
+<script type="text/javascript">
+function draw(gl, vertex_position, quad_buffer)
+{
+	gl.clear(gl.COLOR_BUFFER_BIT);
+	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
+	gl.vertexAttribPointer(vertex_position, 2, gl.FLOAT, false, 0, 0);
+	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+function start()
+{
+	var canvas = document.getElementById("canvas");
+	var gl = canvas.getContext("webgl");
+
+	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
+	gl.shaderSource(vertex_shader, document.getElementById("vertex-shader").text);
+	gl.compileShader(vertex_shader);
+
+	if (!gl.getShaderParameter(vertex_shader, gl.COMPILE_STATUS)) {
+		alert("vertex shader:\n" + gl.getShaderInfoLog(vertex_shader));
+		return;
+	}
+
+	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
+	gl.shaderSource(fragment_shader, document.getElementById("fragment-shader").text);
+	gl.compileShader(fragment_shader);
+
+	if (!gl.getShaderParameter(fragment_shader, gl.COMPILE_STATUS)) {
+		alert("fragment shader:\n" + gl.getShaderInfoLog(fragment_shader));
+		return;
+	}
+
+	var program = gl.createProgram();
+	gl.attachShader(program, vertex_shader);
+	gl.attachShader(program, fragment_shader);
+	gl.linkProgram(program);
+
+	if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+		alert("linker error:\n" + gl.getProgramInfoLog(program));
+		return;
+	}
+
+	gl.useProgram(program);
+
+	var vertex_position = gl.getAttribLocation(program, "vertex_position");
+	gl.enableVertexAttribArray(vertex_position);
+
+	gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+	var quad_buffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
+	var vertices = [ 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0 ];
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+	draw(gl, vertex_position, quad_buffer);
+}
+</script>
+</head>
+
+<body onload="start();" style="color: silver; background-color: black">
+<footer><small>
+srgb.html - test srgb gamma correction using GLSL in WebGL<br />
+Written in 2013 by &lt;Ahmet Inan&gt; &lt;xdsopl@googlemail.com&gt;<br />
+To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide. This software is distributed without any warranty.<br />
+You should have received a copy of the CC0 Public Domain Dedication along with this software. If not, see <a href="http://creativecommons.org/publicdomain/zero/1.0/">http://creativecommons.org/publicdomain/zero/1.0/</a>.
+</small></footer>
+<p>the circle in the middle should almost vanish when looked at from greater distance.</p>
+<canvas id="canvas" style="border: none;" width="512" height="512">
+WebGL not enabled?
+</canvas>
+</body>
+
+</html>
