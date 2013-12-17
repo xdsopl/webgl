@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Raytracing</title>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+attribute vec2 attribute_vertex_position;
+uniform vec3 uniform_camera_up;
+uniform vec3 uniform_camera_right;
+varying vec3 varying_pixel_position;
+void main()
+{
+	gl_Position = vec4(attribute_vertex_position, 0.0, 1.0);
+	varying_pixel_position =
+		attribute_vertex_position[0] * uniform_camera_right +
+		attribute_vertex_position[1] * uniform_camera_up;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+precision highp float;
+uniform vec3 uniform_camera_origin;
+varying vec3 varying_pixel_position;
+vec4 srgb(float r, float g, float b)
+{
+	r = clamp(r, 0.0, 1.0);
+	g = clamp(g, 0.0, 1.0);
+	b = clamp(b, 0.0, 1.0);
+#if 1
+	float K0 = 0.03928;
+	float a = 0.055;
+	float phi = 12.92;
+	float gamma = 2.4;
+	r = r <= K0 / phi ? r * phi : (1.0 + a) * pow(r, 1.0 / gamma) - a;
+	g = g <= K0 / phi ? g * phi : (1.0 + a) * pow(g, 1.0 / gamma) - a;
+	b = b <= K0 / phi ? b * phi : (1.0 + a) * pow(b, 1.0 / gamma) - a;
+#endif
+	return vec4(r, g, b, 1.0);
+}
+void main()
+{
+	vec3 dir = normalize(varying_pixel_position - uniform_camera_origin);
+	gl_FragColor = srgb(dir[0], dir[1], dir[2]);
+}
+</script>
+
+<script type="text/javascript">
+var canvas, gl, attribute_vertex_position, quad_buffer;
+var camera = {
+	up : [ 0.0, 1.0, 0.0 ],
+	right : [ 1.0, 0.0, 0.0 ],
+	dir : [ 0.0, 0.0, -1.0 ],
+	origin : [ 0.0, 0.0, 10.0 ],
+	near: 5,
+	far : 100
+};
+var uniform_camera_up, uniform_camera_right, uniform_camera_origin;
+function draw()
+{
+	gl.clear(gl.COLOR_BUFFER_BIT);
+	gl.uniform3f(uniform_camera_up, camera.up[0], camera.up[1], camera.up[2]);
+	gl.uniform3f(uniform_camera_right, camera.right[0], camera.right[1], camera.right[2]);
+	gl.uniform3f(uniform_camera_origin, camera.origin[0], camera.origin[1], camera.origin[2]);
+	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
+	gl.vertexAttribPointer(attribute_vertex_position, 2, gl.FLOAT, false, 0, 0);
+	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+function start()
+{
+	canvas = document.getElementById("canvas");
+	gl = canvas.getContext("webgl");
+
+	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
+	gl.shaderSource(vertex_shader, document.getElementById("vertex-shader").text);
+	gl.compileShader(vertex_shader);
+
+	if (!gl.getShaderParameter(vertex_shader, gl.COMPILE_STATUS)) {
+		alert("vertex shader:\n" + gl.getShaderInfoLog(vertex_shader));
+		return;
+	}
+
+	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
+	gl.shaderSource(fragment_shader, document.getElementById("fragment-shader").text);
+	gl.compileShader(fragment_shader);
+
+	if (!gl.getShaderParameter(fragment_shader, gl.COMPILE_STATUS)) {
+		alert("fragment shader:\n" + gl.getShaderInfoLog(fragment_shader));
+		return;
+	}
+
+	var program = gl.createProgram();
+	gl.attachShader(program, vertex_shader);
+	gl.attachShader(program, fragment_shader);
+	gl.linkProgram(program);
+
+	if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+		alert("linker error:\n" + gl.getProgramInfoLog(program));
+		return;
+	}
+
+	gl.useProgram(program);
+
+	attribute_vertex_position = gl.getAttribLocation(program, "attribute_vertex_position");
+	gl.enableVertexAttribArray(attribute_vertex_position);
+	uniform_camera_up = gl.getUniformLocation(program, "uniform_camera_up");
+	uniform_camera_right = gl.getUniformLocation(program, "uniform_camera_right");
+	uniform_camera_origin = gl.getUniformLocation(program, "uniform_camera_origin");
+
+	gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+	quad_buffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
+	var vertices = [ 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0 ];
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+	draw();
+}
+</script>
+</head>
+
+<body onload="start();" style="color: silver; background-color: black">
+<canvas id="canvas" style="border: none;" width="512" height="512">
+WebGL not enabled?
+</canvas>
+<footer><small>
+raytracing.html - Raytracing using GLSL in WebGL<br />
+Written in 2013 by &lt;Ahmet Inan&gt; &lt;xdsopl@googlemail.com&gt;<br />
+To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide. This software is distributed without any warranty.<br />
+You should have received a copy of the CC0 Public Domain Dedication along with this software. If not, see <a href="http://creativecommons.org/publicdomain/zero/1.0/">http://creativecommons.org/publicdomain/zero/1.0/</a>.
+</small></footer>
+</body>
+
+</html>
