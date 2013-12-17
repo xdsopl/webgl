@@ -5,18 +5,18 @@
 <title>srgb gamma correction</title>
 
 <script id="vertex-shader" type="x-shader/x-vertex">
-attribute vec2 vertex_position;
-varying vec2 fragment_position;
+attribute vec2 attribute_vertex_position;
+varying vec2 varying_fragment_position;
 void main()
 {
-	gl_Position = vec4(vertex_position, 0.0, 1.0);
-	fragment_position = vertex_position;
+	gl_Position = vec4(attribute_vertex_position, 0.0, 1.0);
+	varying_fragment_position = attribute_vertex_position;
 }
 </script>
 
 <script id="fragment-shader" type="x-shader/x-fragment">
 precision mediump float;
-varying vec2 fragment_position;
+varying vec2 varying_fragment_position;
 uniform bool uniform_srgb;
 float srgb(float v)
 {
@@ -38,19 +38,19 @@ void main()
 	vec4 gray = vec4(tmp, tmp, tmp, 1.0);
 	vec2 rest = mod(gl_FragCoord.xy, 2.0);
 	gl_FragColor = rest[0] < 1.0 ^^ rest[1] < 1.0 ? black : white;
-	gl_FragColor = length(fragment_position) < 0.5 ? gray : gl_FragColor;
+	gl_FragColor = length(varying_fragment_position) < 0.5 ? gray : gl_FragColor;
 }
 </script>
 
 <script type="text/javascript">
-var gl, vertex_position, quad_buffer;
+var gl, attribute_vertex_position, quad_buffer;
 var uniform_srgb, srgb;
 function draw()
 {
 	gl.clear(gl.COLOR_BUFFER_BIT);
 	gl.uniform1i(uniform_srgb, srgb);
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
-	gl.vertexAttribPointer(vertex_position, 2, gl.FLOAT, false, 0, 0);
+	gl.vertexAttribPointer(attribute_vertex_position, 2, gl.FLOAT, false, 0, 0);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 function start()
@@ -88,8 +88,8 @@ function start()
 
 	gl.useProgram(program);
 
-	vertex_position = gl.getAttribLocation(program, "vertex_position");
-	gl.enableVertexAttribArray(vertex_position);
+	attribute_vertex_position = gl.getAttribLocation(program, "attribute_vertex_position");
+	gl.enableVertexAttribArray(attribute_vertex_position);
 	uniform_srgb = gl.getUniformLocation(program, "uniform_srgb");
 
 	gl.clearColor(0.0, 0.0, 0.0, 1.0);
