@@ -17,6 +17,7 @@ void main()
 <script id="fragment-shader" type="x-shader/x-fragment">
 precision mediump float;
 varying vec2 fragment_position;
+uniform bool uniform_srgb;
 float srgb(float v)
 {
 	v = clamp(v, 0.0, 1.0);
@@ -33,7 +34,7 @@ void main()
 {
 	vec4 white = vec4(1.0, 1.0, 1.0, 1.0);
 	vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
-	float tmp = srgb(0.5);
+	float tmp = uniform_srgb ? srgb(0.5) : 0.5;
 	vec4 gray = vec4(tmp, tmp, tmp, 1.0);
 	vec2 rest = mod(gl_FragCoord.xy, 2.0);
 	gl_FragColor = rest[0] < 1.0 ^^ rest[1] < 1.0 ? black : white;
@@ -42,18 +43,20 @@ void main()
 </script>
 
 <script type="text/javascript">
-function draw(gl, vertex_position, quad_buffer)
+var gl, vertex_position, quad_buffer;
+var uniform_srgb, srgb;
+function draw()
 {
 	gl.clear(gl.COLOR_BUFFER_BIT);
+	gl.uniform1i(uniform_srgb, srgb);
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	gl.vertexAttribPointer(vertex_position, 2, gl.FLOAT, false, 0, 0);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
-
 function start()
 {
 	var canvas = document.getElementById("canvas");
-	var gl = canvas.getContext("webgl");
+	gl = canvas.getContext("webgl");
 
 	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
 	gl.shaderSource(vertex_shader, document.getElementById("vertex-shader").text);
@@ -85,17 +88,30 @@ function start()
 
 	gl.useProgram(program);
 
-	var vertex_position = gl.getAttribLocation(program, "vertex_position");
+	vertex_position = gl.getAttribLocation(program, "vertex_position");
 	gl.enableVertexAttribArray(vertex_position);
+	uniform_srgb = gl.getUniformLocation(program, "uniform_srgb");
 
 	gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-	var quad_buffer = gl.createBuffer();
+	quad_buffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	var vertices = [ 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0 ];
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-	draw(gl, vertex_position, quad_buffer);
+	srgb = 1;
+	draw();
+}
+function toggle(button)
+{
+	if (button.innerHTML == "disable") {
+		srgb = 0;
+		button.innerHTML = "enable";
+	} else {
+		srgb = 1;
+		button.innerHTML = "disable";
+	}
+	draw();
 }
 </script>
 </head>
@@ -108,6 +124,7 @@ To the extent possible under law, the author(s) have dedicated all copyright and
 You should have received a copy of the CC0 Public Domain Dedication along with this software. If not, see <a href="http://creativecommons.org/publicdomain/zero/1.0/">http://creativecommons.org/publicdomain/zero/1.0/</a>.
 </small></footer>
 <p>the circle in the middle should almost vanish when looked at from greater distance.</p>
+<p>toggle srgb correction: <button onclick="toggle(this);">disable</button></p>
 <canvas id="canvas" style="border: none;" width="512" height="512">
 WebGL not enabled?
 </canvas>
