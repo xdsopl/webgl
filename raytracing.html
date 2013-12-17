@@ -38,10 +38,38 @@ vec4 srgb(float r, float g, float b)
 #endif
 	return vec4(r, g, b, 1.0);
 }
+struct interval
+{
+	float min, max;
+};
+struct ray
+{
+	vec3 o, d;
+};
+struct sphere {
+	vec3 c;
+	float r;
+};
+bool sphere_ray(inout interval l, sphere s, ray r)
+{
+	vec3 dst = s.c - r.o;
+	float b = dot(dst, r.d);
+	float c = dot(dst, dst) - s.r * s.r;
+	float d = b * b - c;
+	float q = sqrt(d);
+	l.min = b - q;
+	l.max = b + q;
+	return l.min < l.max;
+}
 void main()
 {
-	vec3 dir = normalize(varying_pixel_position - uniform_camera_origin);
-	gl_FragColor = srgb(dir[0], dir[1], dir[2]);
+	ray r;
+	r.d = normalize(varying_pixel_position - uniform_camera_origin);
+	r.o = uniform_camera_origin;
+	sphere s = sphere(vec3(0.0, 0.0, 0.0), 0.5);
+	interval l;
+	float v = sphere_ray(l, s, r) ? 1.0 : 0.0;
+	gl_FragColor = srgb(v, v, v);
 }
 </script>
 
