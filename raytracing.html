@@ -42,6 +42,10 @@ struct interval
 {
 	float min, max;
 };
+struct surface
+{
+	vec3 p, n;
+};
 struct ray
 {
 	vec3 o, d;
@@ -50,7 +54,7 @@ struct sphere {
 	vec3 c;
 	float r;
 };
-bool sphere_ray(inout interval l, sphere s, ray r)
+bool sphere_ray(inout interval l, inout surface i, sphere s, ray r)
 {
 	vec3 dst = s.c - r.o;
 	float b = dot(dst, r.d);
@@ -59,6 +63,8 @@ bool sphere_ray(inout interval l, sphere s, ray r)
 	float q = sqrt(d);
 	l.min = b - q;
 	l.max = b + q;
+	i.p = l.min * r.d + r.o;
+	i.n = (i.p - s.c) / s.r;
 	return l.min < l.max;
 }
 void main()
@@ -68,7 +74,9 @@ void main()
 	r.o = uniform_camera_origin;
 	sphere s = sphere(vec3(0.0, 0.0, 0.0), 0.5);
 	interval l;
-	float v = sphere_ray(l, s, r) ? 1.0 : 0.0;
+	surface i;
+	bool t = sphere_ray(l, i, s, r);
+	float v = t ? abs(dot(i.n, r.d)) : 0.0;
 	gl_FragColor = srgb(v, v, v);
 }
 </script>
