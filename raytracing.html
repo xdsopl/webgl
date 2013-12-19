@@ -21,6 +21,8 @@ void main()
 <script id="fragment-shader" type="x-shader/x-fragment">
 precision highp float;
 uniform vec3 uniform_camera_origin;
+uniform float uniform_camera_near;
+uniform float uniform_camera_far;
 varying vec3 varying_pixel_position;
 vec4 srgb(float r, float g, float b)
 {
@@ -54,18 +56,19 @@ struct sphere {
 	vec3 c;
 	float r;
 };
-bool sphere_ray(inout interval l, inout surface i, sphere s, ray r)
+bool sphere_ray(inout interval l, out surface i, sphere s, ray r)
 {
 	vec3 dst = s.c - r.o;
 	float b = dot(dst, r.d);
 	float c = dot(dst, dst) - s.r * s.r;
 	float d = b * b - c;
 	float q = sqrt(d);
-	l.min = b - q;
-	l.max = b + q;
-	i.p = l.min * r.d + r.o;
+	float l0 = b - q;
+	float l1 = b + q;
+	float lx = l0 < l.min ? l1 : l0;
+	i.p = lx * r.d + r.o;
 	i.n = (i.p - s.c) / s.r;
-	return l.min < l.max;
+	return l.min < lx && lx < l.max;
 }
 vec4 color(surface i, ray r, bool t)
 {
@@ -78,7 +81,7 @@ void main()
 	r.d = normalize(varying_pixel_position - uniform_camera_origin);
 	r.o = uniform_camera_origin;
 	sphere s = sphere(vec3(0.0, 0.0, 0.0), 0.5);
-	interval l;
+	interval l = interval(uniform_camera_near, uniform_camera_far);
 	surface i;
 	bool t = sphere_ray(l, i, s, r);
 	gl_FragColor = color(i, r, t);
@@ -96,12 +99,15 @@ var camera = {
 	far : 100
 };
 var uniform_camera_up, uniform_camera_right, uniform_camera_origin;
+var uniform_camera_near, uniform_camera_far;
 function draw()
 {
 	gl.clear(gl.COLOR_BUFFER_BIT);
 	gl.uniform3f(uniform_camera_up, camera.up[0], camera.up[1], camera.up[2]);
 	gl.uniform3f(uniform_camera_right, camera.right[0], camera.right[1], camera.right[2]);
 	gl.uniform3f(uniform_camera_origin, camera.origin[0], camera.origin[1], camera.origin[2]);
+	gl.uniform1f(uniform_camera_near, camera.near);
+	gl.uniform1f(uniform_camera_far, camera.far);
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	gl.vertexAttribPointer(attribute_vertex_position, 2, gl.FLOAT, false, 0, 0);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -146,6 +152,8 @@ function start()
 	uniform_camera_up = gl.getUniformLocation(program, "uniform_camera_up");
 	uniform_camera_right = gl.getUniformLocation(program, "uniform_camera_right");
 	uniform_camera_origin = gl.getUniformLocation(program, "uniform_camera_origin");
+	uniform_camera_near = gl.getUniformLocation(program, "uniform_camera_near");
+	uniform_camera_far = gl.getUniformLocation(program, "uniform_camera_far");
 
 	gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
