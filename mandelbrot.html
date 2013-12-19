@@ -23,6 +23,10 @@ vec2 cmul(vec2 a, vec2 b)
 {
 	return vec2(a[0] * b[0] - a[1] * b[1], a[1] * b[0] + a[0] * b[1]);
 }
+bool nvidia_sucks(vec2 v)
+{
+	return v[0] <= 0.0 || 0.0 <= v[0] || v[1] <= 0.0 || 0.0 <= v[1];
+}
 vec4 srgb(float r, float g, float b)
 {
 	r = clamp(r, 0.0, 1.0);
@@ -52,7 +56,7 @@ void main()
 	vec2 c = fragment_position;
 	float counter = 0.0;
 	for (int i = 0; i < 100; i++) {
-		counter += dot(z, z) < 4.0 ? 1.0 : 0.0;
+		counter += nvidia_sucks(z) && dot(z, z) < 4.0 ? 1.0 : 0.0;
 		z = cmul(z, z) + c;
 	}
 	gl_FragColor = counter < 100.0 ? rainbow(0.01 * counter) : vec4(0.0, 0.0, 0.0, 1.0);
