@@ -68,7 +68,9 @@ bool sphere_ray(inout interval l, out surface i, sphere s, ray r)
 	float lx = l0 < l.min ? l1 : l0;
 	i.p = lx * r.d + r.o;
 	i.n = (i.p - s.c) / s.r;
-	return l.min < lx && lx < l.max;
+	bool t = l.min < lx && lx < l.max;
+	l.max = t ? lx : l.max;
+	return t;
 }
 vec4 color(surface i, ray r, bool t)
 {
