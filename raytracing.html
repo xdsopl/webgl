@@ -68,7 +68,7 @@ bool sphere_ray(inout interval l, out surface i, sphere s, ray r)
 	float lx = l0 < l.min ? l1 : l0;
 	i.p = lx * r.d + r.o;
 	i.n = (i.p - s.c) / s.r;
-	bool t = l.min < lx && lx < l.max;
+	bool t = d >= 0.0 && l.min < lx && lx < l.max;
 	l.max = t ? lx : l.max;
 	return t;
 }
