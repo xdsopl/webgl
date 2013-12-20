@@ -18,7 +18,7 @@ void main()
 }
 </script>
 
-<script id="argb_srgb" type="x-shader/x-fragment">
+<script id="argb-srgb" type="x-shader/x-fragment">
 vec4 argb(float r, float g, float b)
 {
 	r = clamp(r, 0.0, 1.0);
@@ -35,7 +35,7 @@ vec4 argb(float r, float g, float b)
 }
 </script>
 
-<script id="argb_linear" type="x-shader/x-fragment">
+<script id="argb-linear" type="x-shader/x-fragment">
 vec4 argb(float r, float g, float b)
 {
 	return vec4(r, g, b, 1.0);
@@ -136,9 +136,9 @@ function compile()
 	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
 	var source = "precision highp float;\n";
 	if (srgb)
-		source += document.getElementById("argb_srgb").text;
+		source += document.getElementById("argb-srgb").text;
 	else
-		source += document.getElementById("argb_linear").text;
+		source += document.getElementById("argb-linear").text;
 	source += document.getElementById("fragment-shader").text;
 	gl.shaderSource(fragment_shader, source);
 	gl.compileShader(fragment_shader);
