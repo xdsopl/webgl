@@ -18,18 +18,12 @@ void main()
 }
 </script>
 
-<script id="fragment-shader" type="x-shader/x-fragment">
-precision highp float;
-uniform vec3 uniform_camera_origin;
-uniform float uniform_camera_near;
-uniform float uniform_camera_far;
-varying vec3 varying_pixel_position;
-vec4 srgb(float r, float g, float b)
+<script id="argb_srgb" type="x-shader/x-fragment">
+vec4 argb(float r, float g, float b)
 {
 	r = clamp(r, 0.0, 1.0);
 	g = clamp(g, 0.0, 1.0);
 	b = clamp(b, 0.0, 1.0);
-#if 1
 	float K0 = 0.03928;
 	float a = 0.055;
 	float phi = 12.92;
@@ -37,9 +31,22 @@ vec4 srgb(float r, float g, float b)
 	r = r <= K0 / phi ? r * phi : (1.0 + a) * pow(r, 1.0 / gamma) - a;
 	g = g <= K0 / phi ? g * phi : (1.0 + a) * pow(g, 1.0 / gamma) - a;
 	b = b <= K0 / phi ? b * phi : (1.0 + a) * pow(b, 1.0 / gamma) - a;
-#endif
 	return vec4(r, g, b, 1.0);
 }
+</script>
+
+<script id="argb_linear" type="x-shader/x-fragment">
+vec4 argb(float r, float g, float b)
+{
+	return vec4(r, g, b, 1.0);
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+uniform vec3 uniform_camera_origin;
+uniform float uniform_camera_near;
+uniform float uniform_camera_far;
+varying vec3 varying_pixel_position;
 struct interval
 {
 	float min, max;
@@ -75,7 +82,7 @@ bool sphere_ray(inout interval l, out surface i, sphere s, ray r)
 vec4 color(surface i, ray r, bool t)
 {
 	float v = t ? dot(i.n, r.d) : 0.0;
-	return v < 0.0 ? srgb(0.0, -v, 0.0) : srgb(v, 0.0, 0.0);
+	return v < 0.0 ? argb(0.0, -v, 0.0) : argb(v, 0.0, 0.0);
 }
 void main()
 {
@@ -92,6 +99,7 @@ void main()
 
 <script type="text/javascript">
 var canvas, gl, attribute_vertex_position, quad_buffer;
+var srgb = 1;
 var camera = {
 	up : [ 0.0, 1.0, 0.0 ],
 	right : [ 1.0, 0.0, 0.0 ],
@@ -114,11 +122,8 @@ function draw()
 	gl.vertexAttribPointer(attribute_vertex_position, 2, gl.FLOAT, false, 0, 0);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
-function start()
+function compile()
 {
-	canvas = document.getElementById("canvas");
-	gl = canvas.getContext("webgl");
-
 	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
 	gl.shaderSource(vertex_shader, document.getElementById("vertex-shader").text);
 	gl.compileShader(vertex_shader);
@@ -129,7 +134,13 @@ function start()
 	}
 
 	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
-	gl.shaderSource(fragment_shader, document.getElementById("fragment-shader").text);
+	var source = "precision highp float;\n";
+	if (srgb)
+		source += document.getElementById("argb_srgb").text;
+	else
+		source += document.getElementById("argb_linear").text;
+	source += document.getElementById("fragment-shader").text;
+	gl.shaderSource(fragment_shader, source);
 	gl.compileShader(fragment_shader);
 
 	if (!gl.getShaderParameter(fragment_shader, gl.COMPILE_STATUS)) {
@@ -156,7 +167,11 @@ function start()
 	uniform_camera_origin = gl.getUniformLocation(program, "uniform_camera_origin");
 	uniform_camera_near = gl.getUniformLocation(program, "uniform_camera_near");
 	uniform_camera_far = gl.getUniformLocation(program, "uniform_camera_far");
-
+}
+function start()
+{
+	canvas = document.getElementById("canvas");
+	gl = canvas.getContext("webgl");
 	gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
 	quad_buffer = gl.createBuffer();
@@ -164,12 +179,26 @@ function start()
 	var vertices = [ 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0 ];
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
+	compile();
+	draw();
+}
+function toggle(button)
+{
+	if (button.innerHTML == "disable") {
+		srgb = 0;
+		button.innerHTML = "enable";
+	} else {
+		srgb = 1;
+		button.innerHTML = "disable";
+	}
+	compile();
 	draw();
 }
 </script>
 </head>
 
 <body onload="start();" style="color: silver; background-color: black">
+<p>toggle srgb correction: <button onclick="toggle(this);">disable</button></p>
 <canvas id="canvas" style="border: none;" width="512" height="512">
 WebGL not enabled?
 </canvas>
