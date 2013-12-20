@@ -16,8 +16,31 @@ void main()
 }
 </script>
 
+<script id="argb_srgb" type="x-shader/x-fragment">
+vec4 argb(float r, float g, float b)
+{
+	r = clamp(r, 0.0, 1.0);
+	g = clamp(g, 0.0, 1.0);
+	b = clamp(b, 0.0, 1.0);
+	float K0 = 0.03928;
+	float a = 0.055;
+	float phi = 12.92;
+	float gamma = 2.4;
+	r = r <= K0 / phi ? r * phi : (1.0 + a) * pow(r, 1.0 / gamma) - a;
+	g = g <= K0 / phi ? g * phi : (1.0 + a) * pow(g, 1.0 / gamma) - a;
+	b = b <= K0 / phi ? b * phi : (1.0 + a) * pow(b, 1.0 / gamma) - a;
+	return vec4(r, g, b, 1.0);
+}
+</script>
+
+<script id="argb_linear" type="x-shader/x-fragment">
+vec4 argb(float r, float g, float b)
+{
+	return vec4(r, g, b, 1.0);
+}
+</script>
+
 <script id="fragment-shader" type="x-shader/x-fragment">
-precision highp float;
 varying vec2 fragment_position;
 vec2 cmul(vec2 a, vec2 b)
 {
@@ -27,28 +50,12 @@ bool nvidia_sucks(vec2 v)
 {
 	return v[0] <= 0.0 || 0.0 <= v[0] || v[1] <= 0.0 || 0.0 <= v[1];
 }
-vec4 srgb(float r, float g, float b)
-{
-	r = clamp(r, 0.0, 1.0);
-	g = clamp(g, 0.0, 1.0);
-	b = clamp(b, 0.0, 1.0);
-#if 1
-	float K0 = 0.03928;
-	float a = 0.055;
-	float phi = 12.92;
-	float gamma = 2.4;
-	r = r <= K0 / phi ? r * phi : (1.0 + a) * pow(r, 1.0 / gamma) - a;
-	g = g <= K0 / phi ? g * phi : (1.0 + a) * pow(g, 1.0 / gamma) - a;
-	b = b <= K0 / phi ? b * phi : (1.0 + a) * pow(b, 1.0 / gamma) - a;
-#endif
-	return vec4(r, g, b, 1.0);
-}
 vec4 rainbow(float v)
 {
 	float r = 6.0 * abs(v - 3.0 / 6.0) - 1.0;
 	float g = 2.0 - 6.0 * abs(v - 2.0 / 6.0);
 	float b = 2.0 - 6.0 * abs(v - 4.0 / 6.0);
-	return srgb(r, g, b);
+	return argb(r, g, b);
 }
 void main()
 {
@@ -65,7 +72,7 @@ void main()
 </script>
 
 <script type="text/javascript">
-var canvas, gl, vertex_position, quad_buffer;
+var canvas, gl, vertex_position, quad_buffer, srgb = 1;
 var uniform_zoom, uniform_offset;
 var zoom = 2.0, off_x = -0.5, off_y = 0.0;
 function draw()
@@ -86,11 +93,8 @@ function mouse_down(event)
 	zoom /= 2.0;
 	draw();
 }
-function start()
+function compile()
 {
-	canvas = document.getElementById("canvas");
-	gl = canvas.getContext("webgl");
-
 	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
 	gl.shaderSource(vertex_shader, document.getElementById("vertex-shader").text);
 	gl.compileShader(vertex_shader);
@@ -101,7 +105,13 @@ function start()
 	}
 
 	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
-	gl.shaderSource(fragment_shader, document.getElementById("fragment-shader").text);
+	var source = "precision highp float;\n";
+	if (srgb)
+		source += document.getElementById("argb_srgb").text;
+	else
+		source += document.getElementById("argb_linear").text;
+	source += document.getElementById("fragment-shader").text;
+	gl.shaderSource(fragment_shader, source);
 	gl.compileShader(fragment_shader);
 
 	if (!gl.getShaderParameter(fragment_shader, gl.COMPILE_STATUS)) {
@@ -125,6 +135,11 @@ function start()
 	gl.enableVertexAttribArray(vertex_position);
 	uniform_offset = gl.getUniformLocation(program, "offset");
 	uniform_zoom = gl.getUniformLocation(program, "zoom");
+}
+function start()
+{
+	canvas = document.getElementById("canvas");
+	gl = canvas.getContext("webgl");
 
 	gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
@@ -133,14 +148,28 @@ function start()
 	var vertices = [ 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0 ];
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
+	compile();
 	draw();
 
 	canvas.addEventListener("mousedown", mouse_down, false);
+}
+function toggle(button)
+{
+	if (button.innerHTML == "disable") {
+		srgb = 0;
+		button.innerHTML = "enable";
+	} else {
+		srgb = 1;
+		button.innerHTML = "disable";
+	}
+	compile();
+	draw();
 }
 </script>
 </head>
 
 <body onload="start();" style="color: silver; background-color: black">
+<p>toggle srgb correction: <button onclick="toggle(this);">disable</button></p>
 <canvas id="canvas" style="border: none;" width="1024" height="1024">
 WebGL not enabled?
 </canvas>
