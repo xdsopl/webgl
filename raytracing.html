@@ -99,7 +99,6 @@ void main()
 
 <script type="text/javascript">
 var canvas, gl, attribute_vertex_position, quad_buffer;
-var srgb = 1;
 var camera = {
 	up : [ 0.0, 1.0, 0.0 ],
 	right : [ 1.0, 0.0, 0.0 ],
@@ -135,7 +134,7 @@ function compile()
 
 	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
 	var source = "precision highp float;\n";
-	if (srgb)
+	if (document.getElementById("srgb-toggle").innerHTML == "disable")
 		source += document.getElementById("argb-srgb").text;
 	else
 		source += document.getElementById("argb-linear").text;
@@ -185,10 +184,8 @@ function start()
 function toggle(button)
 {
 	if (button.innerHTML == "disable") {
-		srgb = 0;
 		button.innerHTML = "enable";
 	} else {
-		srgb = 1;
 		button.innerHTML = "disable";
 	}
 	compile();
@@ -198,7 +195,7 @@ function toggle(button)
 </head>
 
 <body onload="start();" style="color: silver; background-color: black">
-<p>toggle srgb correction: <button onclick="toggle(this);">disable</button></p>
+<p>toggle srgb correction: <button id="srgb-toggle" onclick="toggle(this);">disable</button></p>
 <canvas id="canvas" style="border: none;" width="512" height="512">
 WebGL not enabled?
 </canvas>
