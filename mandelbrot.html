@@ -43,7 +43,7 @@ vec4 argb(float r, float g, float b)
 <script id="workarounds" type="x-shader/x-fragment">
 float inside(vec2 z)
 {
-	return ((z[0] <= 0.0 || 0.0 <= z[0] || z[1] <= 0.0 || 0.0 <= z[1]) && dot(z, z) < 4.0) ? 1.0 : 0.0;
+	return ((z[0] <= 0.0 || 0.0 <= z[0]) && (z[1] <= 0.0 || 0.0 <= z[1]) && dot(z, z) < 4.0) ? 1.0 : 0.0;
 }
 </script>
 
