@@ -58,6 +58,13 @@ function start()
 {
 	var canvas = document.getElementById("canvas");
 	gl = canvas.getContext("webgl");
+	if (!gl)
+		gl = canvas.getContext("experimental-webgl");
+
+	if (!gl) {
+		alert("could not get webgl context");
+		return;
+	}
 
 	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
 	gl.shaderSource(vertex_shader, document.getElementById("vertex-shader").text);

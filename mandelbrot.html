@@ -154,6 +154,13 @@ function start()
 {
 	canvas = document.getElementById("canvas");
 	gl = canvas.getContext("webgl");
+	if (!gl)
+		gl = canvas.getContext("experimental-webgl");
+
+	if (!gl) {
+		alert("could not get webgl context");
+		return;
+	}
 
 	gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
