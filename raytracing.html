@@ -47,53 +47,53 @@ uniform vec3 uniform_camera_origin;
 uniform float uniform_camera_near;
 uniform float uniform_camera_far;
 varying vec3 varying_pixel_position;
-struct interval
+struct struct_interval
 {
 	float min, max;
 };
-struct surface
+struct struct_surface
 {
 	vec3 p, n;
 };
-struct ray
+struct struct_ray
 {
 	vec3 o, d;
 };
-struct sphere {
+struct struct_sphere {
 	vec3 c;
 	float r;
 };
-bool sphere_ray(inout interval l, out surface i, sphere s, ray r)
+bool sphere_ray(inout struct_interval l, out struct_surface surface, struct_sphere sphere, struct_ray ray)
 {
-	vec3 dst = s.c - r.o;
-	float b = dot(dst, r.d);
-	float c = dot(dst, dst) - s.r * s.r;
+	vec3 dst = sphere.c - ray.o;
+	float b = dot(dst, ray.d);
+	float c = dot(dst, dst) - sphere.r * sphere.r;
 	float d = b * b - c;
 	float q = sqrt(d);
 	float l0 = b - q;
 	float l1 = b + q;
 	float lx = l0 < l.min ? l1 : l0;
-	i.p = lx * r.d + r.o;
-	i.n = (i.p - s.c) / s.r;
+	surface.p = lx * ray.d + ray.o;
+	surface.n = (surface.p - sphere.c) / sphere.r;
 	bool t = d >= 0.0 && l.min < lx && lx < l.max;
 	l.max = t ? lx : l.max;
 	return t;
 }
-vec4 color(surface i, ray r, bool t)
+vec4 color(struct_surface surface, struct_ray ray, bool t)
 {
-	float v = t ? dot(i.n, r.d) : 0.0;
+	float v = t ? dot(surface.n, ray.d) : 0.0;
 	return v < 0.0 ? argb(0.0, -v, 0.0) : argb(v, 0.0, 0.0);
 }
 void main()
 {
-	ray r;
-	r.d = normalize(varying_pixel_position - uniform_camera_origin);
-	r.o = uniform_camera_origin;
-	sphere s = sphere(vec3(0.0, 0.0, 0.0), 0.5);
-	interval l = interval(uniform_camera_near, uniform_camera_far);
-	surface i;
-	bool t = sphere_ray(l, i, s, r);
-	gl_FragColor = color(i, r, t);
+	struct_ray ray;
+	ray.d = normalize(varying_pixel_position - uniform_camera_origin);
+	ray.o = uniform_camera_origin;
+	struct_sphere sphere = struct_sphere(vec3(0.0, 0.0, 0.0), 0.5);
+	struct_interval l = struct_interval(uniform_camera_near, uniform_camera_far);
+	struct_surface surface;
+	bool t = sphere_ray(l, surface, sphere, ray);
+	gl_FragColor = color(surface, ray, t);
 }
 </script>
 
