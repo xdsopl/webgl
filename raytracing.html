@@ -89,7 +89,7 @@ vec4 color(struct_surface surface, struct_ray ray)
 void main()
 {
 	struct_ray ray;
-	ray.d = normalize(varying_pixel_position - uniform_camera_origin);
+	ray.d = normalize(varying_pixel_position);
 	ray.o = uniform_camera_origin;
 	ray.near = uniform_camera_near;
 	ray.far = uniform_camera_far;
