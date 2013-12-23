@@ -57,6 +57,7 @@ struct struct_surface
 struct struct_ray
 {
 	vec3 o, d;
+	float near, far;
 };
 struct struct_sphere {
 	vec3 c;
@@ -72,10 +73,10 @@ void sphere_ray(inout struct_surface surface, struct_sphere sphere, struct_ray r
 	float l0 = b - q;
 	float l1 = b + q;
 	struct_surface tmp;
-	tmp.l = l0 < 0.0 ? l1 : l0;
+	tmp.l = l0 < ray.near ? l1 : l0;
 	tmp.p = tmp.l * ray.d + ray.o;
 	tmp.n = (tmp.p - sphere.c) / sphere.r;
-	tmp.t = d >= 0.0 && 0.0 <= tmp.l && tmp.l < surface.l;
+	tmp.t = d >= 0.0 && ray.near <= tmp.l && tmp.l < surface.l;
 	surface = tmp.t ? tmp : surface;
 }
 vec4 color(struct_surface surface, struct_ray ray)
@@ -88,8 +89,10 @@ void main()
 	struct_ray ray;
 	ray.d = normalize(varying_pixel_position - uniform_camera_origin + uniform_camera_near * uniform_camera_dir);
 	ray.o = uniform_camera_origin;
+	ray.near = uniform_camera_near;
+	ray.far = uniform_camera_far;
 	struct_surface surface;
-	surface.l = uniform_camera_far;
+	surface.l = ray.far;
 	surface.t = false;
 	sphere_ray(surface, struct_sphere(vec3(0.0, 0.0, 0.0), 0.5), ray);
 	sphere_ray(surface, struct_sphere(vec3(-0.3, 0.4, 0.2), 0.3), ray);
