@@ -68,14 +68,12 @@ void sphere_ray(inout struct_surface surface, struct_sphere sphere, struct_ray r
 	float q = sqrt(d);
 	float l0 = b - q;
 	float l1 = b + q;
-	float lx = l0 < 0.0 ? l1 : l0;
-	vec3 point = lx * ray.d + ray.o;
-	vec3 normal = (point - sphere.c) / sphere.r;
-	bool test = d >= 0.0 && 0.0 <= lx && lx < surface.l;
-	surface.l = test ? lx : surface.l;
-	surface.p = test ? point : surface.p;
-	surface.n = test ? normal : surface.n;
-	surface.t = test || surface.t;
+	struct_surface tmp;
+	tmp.l = l0 < 0.0 ? l1 : l0;
+	tmp.p = tmp.l * ray.d + ray.o;
+	tmp.n = (tmp.p - sphere.c) / sphere.r;
+	tmp.t = d >= 0.0 && 0.0 <= tmp.l && tmp.l < surface.l;
+	surface = tmp.t ? tmp : surface;
 }
 vec4 color(struct_surface surface, struct_ray ray)
 {
