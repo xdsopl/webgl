@@ -8,13 +8,16 @@
 attribute vec2 attribute_vertex_position;
 uniform vec3 uniform_camera_up;
 uniform vec3 uniform_camera_right;
+uniform vec3 uniform_camera_dir;
+uniform float uniform_camera_near;
 varying vec3 varying_pixel_position;
 void main()
 {
 	gl_Position = vec4(attribute_vertex_position, 0.0, 1.0);
 	varying_pixel_position =
 		attribute_vertex_position[0] * uniform_camera_right +
-		attribute_vertex_position[1] * uniform_camera_up;
+		attribute_vertex_position[1] * uniform_camera_up +
+		uniform_camera_near * uniform_camera_dir;
 }
 </script>
 
@@ -43,9 +46,8 @@ vec4 argb(float r, float g, float b)
 </script>
 
 <script id="fragment-shader" type="x-shader/x-fragment">
-uniform vec3 uniform_camera_origin;
-uniform vec3 uniform_camera_dir;
 varying vec3 varying_pixel_position;
+uniform vec3 uniform_camera_origin;
 uniform float uniform_camera_near;
 uniform float uniform_camera_far;
 struct struct_surface
@@ -87,7 +89,7 @@ vec4 color(struct_surface surface, struct_ray ray)
 void main()
 {
 	struct_ray ray;
-	ray.d = normalize(varying_pixel_position - uniform_camera_origin + uniform_camera_near * uniform_camera_dir);
+	ray.d = normalize(varying_pixel_position - uniform_camera_origin);
 	ray.o = uniform_camera_origin;
 	ray.near = uniform_camera_near;
 	ray.far = uniform_camera_far;
