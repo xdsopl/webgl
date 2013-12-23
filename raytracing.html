@@ -105,6 +105,7 @@ var camera = {
 	origin : [ 0.0, 0.0, 10.0 ]
 };
 var uniform_camera_up, uniform_camera_right, uniform_camera_origin;
+var last_x, last_y;
 function draw()
 {
 	gl.clear(gl.COLOR_BUFFER_BIT);
@@ -159,6 +160,25 @@ function compile()
 	uniform_camera_right = gl.getUniformLocation(program, "uniform_camera_right");
 	uniform_camera_origin = gl.getUniformLocation(program, "uniform_camera_origin");
 }
+function mouse_move(event)
+{
+	var x = event.clientX;
+	var y = event.clientY;
+	var x_rel = (x - last_x) / canvas.width;
+	var y_rel = (last_y - y) / canvas.height;
+	last_x = x;
+	last_y = y;
+}
+function mouse_down(event)
+{
+	last_x = event.clientX;
+	last_y = event.clientY;
+	document.addEventListener("mousemove", mouse_move, false);
+}
+function mouse_up(event)
+{
+	document.removeEventListener("mousemove", mouse_move, false);
+}
 function start()
 {
 	canvas = document.getElementById("canvas");
@@ -180,6 +200,9 @@ function start()
 
 	compile();
 	draw();
+
+	canvas.addEventListener("mousedown", mouse_down, false);
+	document.addEventListener("mouseup", mouse_up, false);
 }
 function toggle(button)
 {
