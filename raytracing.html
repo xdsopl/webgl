@@ -199,6 +199,11 @@ function compile()
 	uniform_camera_near = gl.getUniformLocation(program, "uniform_camera_near");
 	uniform_camera_far = gl.getUniformLocation(program, "uniform_camera_far");
 }
+function v3_normalize(v)
+{
+	var l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+	return [ v[0] / l, v[1] / l, v[2] / l ];
+}
 function v3_cross(a, b)
 {
 	return [
@@ -248,8 +253,8 @@ function mouse_move(event)
 	var rot_y = m4_rot(camera.up, - Math.PI * x_rel);
 	var rotation = m4_mul(rot_x, rot_y);
 	camera.origin = m4v3_mul(rotation, camera.origin);
-	camera.up = m4v3_mul(rotation, camera.up);
-	camera.right = m4v3_mul(rotation, camera.right);
+	camera.up = v3_normalize(m4v3_mul(rotation, camera.up));
+	camera.right = v3_normalize(m4v3_mul(rotation, camera.right));
 	camera.dir = v3_cross(camera.up, camera.right);
 	draw();
 }
