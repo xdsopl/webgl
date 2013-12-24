@@ -65,6 +65,25 @@ struct struct_sphere {
 	vec3 c;
 	float r;
 };
+struct struct_aabb {
+	vec3 c0, c1;
+};
+void aabb_ray(inout struct_surface surface, struct_aabb box, struct_ray ray)
+{
+	vec3 a = (box.c0 - ray.o) / ray.d;
+	vec3 b = (box.c1 - ray.o) / ray.d;
+	float l0 = max(max(min(a.x, b.x), min(a.y, b.y)), min(a.z, b.z));
+	float l1 = min(min(max(a.x, b.x), max(a.y, b.y)), max(a.z, b.z));
+	struct_surface tmp;
+	tmp.l = l0 < 0.0 ? l1 : l0;
+	tmp.p = tmp.l * ray.d + ray.o;
+	// no select function in essl .. you've gotta be kidding!
+	tmp.n.x = a.x == tmp.l ? -1.0 : b.x == tmp.l ? 1.0 : 0.0;
+	tmp.n.y = a.y == tmp.l ? -1.0 : b.y == tmp.l ? 1.0 : 0.0;
+	tmp.n.z = a.z == tmp.l ? -1.0 : b.z == tmp.l ? 1.0 : 0.0;
+	tmp.t = l0 < l1 && 0.0 <= tmp.l && tmp.l < surface.l;
+	surface = tmp.t ? tmp : surface;
+}
 void sphere_ray(inout struct_surface surface, struct_sphere sphere, struct_ray ray)
 {
 	vec3 dst = sphere.c - ray.o;
@@ -96,6 +115,9 @@ void main()
 	struct_surface surface;
 	surface.l = ray.far;
 	surface.t = false;
+	aabb_ray(surface, struct_aabb(vec3(0.5, 0.5, 0.5), vec3(0.8, 0.8, 0.8)), ray);
+	aabb_ray(surface, struct_aabb(vec3(0.3, 0.1, 0.6), vec3(0.4, 0.6, 0.7)), ray);
+	aabb_ray(surface, struct_aabb(vec3(-0.9, 0.3, -0.6), vec3(-0.8, 0.6, 0.4)), ray);
 	sphere_ray(surface, struct_sphere(vec3(0.0, 0.0, 0.0), 0.5), ray);
 	sphere_ray(surface, struct_sphere(vec3(-0.3, 0.4, 0.2), 0.3), ray);
 	sphere_ray(surface, struct_sphere(vec3(0.3, -0.5, 0.7), 0.2), ray);
