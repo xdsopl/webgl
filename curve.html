@@ -1,0 +1,385 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Curve</title>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+attribute vec2 attribute_vertex_position;
+uniform vec3 uniform_camera_up;
+uniform vec3 uniform_camera_right;
+uniform vec3 uniform_camera_dir;
+uniform float uniform_camera_near;
+varying vec3 varying_pixel_position;
+void main()
+{
+	gl_Position = vec4(attribute_vertex_position, 0.0, 1.0);
+	varying_pixel_position =
+		attribute_vertex_position[0] * uniform_camera_right +
+		attribute_vertex_position[1] * uniform_camera_up +
+		uniform_camera_near * uniform_camera_dir;
+}
+</script>
+
+<script id="argb-srgb" type="x-shader/x-fragment">
+vec4 argb(float r, float g, float b)
+{
+	r = clamp(r, 0.0, 1.0);
+	g = clamp(g, 0.0, 1.0);
+	b = clamp(b, 0.0, 1.0);
+	float K0 = 0.03928;
+	float a = 0.055;
+	float phi = 12.92;
+	float gamma = 2.4;
+	r = r <= K0 / phi ? r * phi : (1.0 + a) * pow(r, 1.0 / gamma) - a;
+	g = g <= K0 / phi ? g * phi : (1.0 + a) * pow(g, 1.0 / gamma) - a;
+	b = b <= K0 / phi ? b * phi : (1.0 + a) * pow(b, 1.0 / gamma) - a;
+	return vec4(r, g, b, 1.0);
+}
+</script>
+
+<script id="argb-linear" type="x-shader/x-fragment">
+vec4 argb(float r, float g, float b)
+{
+	return vec4(r, g, b, 1.0);
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+varying vec3 varying_pixel_position;
+uniform vec3 uniform_camera_origin;
+uniform float uniform_camera_near;
+uniform float uniform_camera_far;
+struct struct_interval
+{
+	float min, max;
+};
+struct struct_surface
+{
+	vec3 p, n;
+	float l;
+	bool t;
+};
+struct struct_ray
+{
+	vec3 o, d;
+	float near, far;
+};
+struct struct_sphere {
+	vec3 c;
+	float r;
+};
+bool sphere_ray(out struct_interval l, struct_sphere sphere, struct_ray ray)
+{
+	vec3 dst = sphere.c - ray.o;
+	float b = dot(dst, ray.d);
+	float c = dot(dst, dst) - sphere.r * sphere.r;
+	float d = b * b - c;
+	float q = sqrt(d);
+	float l0 = b - q;
+	float l1 = b + q;
+	l.min = max(l0, ray.near);
+	l.max = min(l1, ray.far);
+	return d >= 0.0 && l0 < ray.far && l1 > ray.near;
+}
+vec4 color(struct_surface surface, struct_ray ray)
+{
+	float v = surface.t ? dot(surface.n, ray.d) : 0.0;
+	return v < 0.0 ? argb(0.0, -v, 0.0) : argb(v, 0.0, 0.0);
+}
+float sq(float x)
+{
+	return x * x;
+}
+float curve_xyza(float x, float y, float z, float a)
+{
+//	return 4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2;
+	return 4.0*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(x)-1.0*sq(y))*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(y)-1.0*sq(z))*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(z)-1.0*sq(x))-1.0*(1.0+2.0*(a*(1.0+sqrt(5.0))/2.0))*sq(sq(x)+sq(y)+sq(z)-1.0*1.0);
+}
+float deriv_x(float x, float y, float z, float a)
+{
+//	return 2*(sqrt(5)+1)^2*a^2*x*((sqrt(5)+1)^2*a^2*y^2/4-z^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*x*(z^2+y^2+x^2-1)-8*x*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*((sqrt(5)+1)^2*a^2*y^2/4-z^2);
+	return 2.0*sq(sqrt(5.0)+1.0)*sq(a)*x*sq((sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*sq((sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*x*(sq(z)+sq(y)+sq(x)-1.0)-8.0*x*sq((sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*sq((sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z));
+}
+float deriv_y(float x, float y, float z, float a)
+{
+//	return -8*y*((sqrt(5)+1)^2*a^2*y^2/4-z^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)+2*(sqrt(5)+1)^2*a^2*y*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*y*(z^2+y^2+x^2-1);
+	return -8.0*y*sq((sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*sq((sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))+2.0*sq(sqrt(5.0)+1.0)*sq(a)*y*sq((sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*sq((sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*y*(sq(z)+sq(y)+sq(x)-1.0);
+}
+float deriv_z(float x, float y, float z, float a)
+{
+//	return -8*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*z*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*z*(z^2+y^2+x^2-1)+2*(sqrt(5)+1)^2*a^2*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*z*((sqrt(5)+1)^2*a^2*y^2/4-z^2);
+	return -8.0*sq((sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*sq((sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*z*(sq(z)+sq(y)+sq(x)-1.0)+2.0*sq(sqrt(5.0)+1.0)*sq(a)*sq((sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*sq((sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z));
+}
+float curve(vec3 v, float a)
+{
+	return curve_xyza(v.x, v.y, v.z, a);
+}
+vec3 gradient(vec3 v, float a)
+{
+	return vec3(deriv_x(v.x, v.y, v.z, a), deriv_y(v.x, v.y, v.z, a), deriv_z(v.x, v.y, v.z, a));
+}
+bool sign_change(float a, float b)
+{
+	return a * b < 0.0;
+}
+float bisect(struct_interval l, struct_ray ray, float a)
+{
+	struct_interval k = l;
+	vec3 p0 = k.min * ray.d + ray.o;
+	float v0 = curve(p0, a);
+	for (int i = 0; i < 20; i++) {
+		float x = 0.5 * (k.min + k.max);
+		vec3 p1 = x * ray.d + ray.o;
+		bool test = sign_change(v0, curve(p1, a));
+		k.min = test ? k.min : x;
+		k.max = test ? x : k.max;
+	}
+	return 0.5 * (k.min + k.max);
+}
+float newton(float n, struct_ray ray, float a)
+{
+	for (int i = 0; i < 20; i++) {
+		vec3 p = n * ray.d + ray.o;
+		n -= curve(p, a) / dot(ray.d, gradient(p, a));
+	}
+	return n;
+}
+bool localize(inout struct_interval l, struct_ray ray, float a)
+{
+	float coarse = 0.05;
+	float fine = 0.001;
+	struct_interval k = l;
+	vec3 p0 = k.min * ray.d + ray.o;
+	float v0 = curve(p0, a);
+	bool test = false;
+//	while (test || k.min >= l.max) {
+	for (int i = 0; i < 100; i++) {
+		float x = v0 / dot(ray.d, gradient(p0, a));
+		float step = clamp(abs(x), fine, coarse);
+		k.max = test ? k.max : k.min + step;
+		vec3 p1 = k.max * ray.d + ray.o;
+		float v1 = curve(p1, a);
+		test = test || k.max < l.max && sign_change(v0, v1);
+		k.min = test ? k.min : k.max;
+		v0 = v1;
+		p0 = p1;
+	}
+	l.min = test ? k.min : l.min;
+	l.max = test ? k.max : l.max;
+	return test;
+}
+void main()
+{
+	float a = 1.0;
+	struct_ray ray;
+	ray.d = normalize(varying_pixel_position);
+	ray.o = uniform_camera_origin;
+	ray.near = uniform_camera_near;
+	ray.far = uniform_camera_far;
+	struct_interval l;
+	if (!sphere_ray(l, struct_sphere(vec3(0.0, 0.0, 0.0), 3.0), ray))
+		discard;
+	struct_surface surface;
+	surface.t = localize(l, ray, a);
+	surface.l = newton(bisect(l, ray, a), ray, a);
+	surface.p = surface.l * ray.d + ray.o;
+	surface.n = normalize(gradient(surface.p, a));
+	gl_FragColor = color(surface, ray);
+}
+</script>
+
+<script type="text/javascript">
+var canvas, gl, attribute_vertex_position, quad_buffer;
+var camera = {
+	up : [ 0.0, 1.0, 0.0 ],
+	right : [ 1.0, 0.0, 0.0 ],
+	dir : [ 0.0, 0.0, -1.0 ],
+	origin : [ 0.0, 0.0, 20.0 ],
+	near: 5.0,
+	far : 100.0
+};
+var uniform_camera_up, uniform_camera_right, uniform_camera_origin;
+var uniform_camera_dir, uniform_camera_near, uniform_camera_far;
+var last_x, last_y;
+function draw()
+{
+	gl.clear(gl.COLOR_BUFFER_BIT);
+	gl.uniform3f(uniform_camera_up, camera.up[0], camera.up[1], camera.up[2]);
+	gl.uniform3f(uniform_camera_right, camera.right[0], camera.right[1], camera.right[2]);
+	gl.uniform3f(uniform_camera_origin, camera.origin[0], camera.origin[1], camera.origin[2]);
+	gl.uniform3f(uniform_camera_dir, camera.dir[0], camera.dir[1], camera.dir[2]);
+	gl.uniform1f(uniform_camera_near, camera.near);
+	gl.uniform1f(uniform_camera_far, camera.far);
+	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
+	gl.vertexAttribPointer(attribute_vertex_position, 2, gl.FLOAT, false, 0, 0);
+	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+function compile()
+{
+	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
+	gl.shaderSource(vertex_shader, document.getElementById("vertex-shader").text);
+	gl.compileShader(vertex_shader);
+
+	if (!gl.getShaderParameter(vertex_shader, gl.COMPILE_STATUS)) {
+		alert("vertex shader:\n" + gl.getShaderInfoLog(vertex_shader));
+		return;
+	}
+
+	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
+	var source = "precision highp float;\n";
+	if (document.getElementById("srgb-toggle").innerHTML == "disable")
+		source += document.getElementById("argb-srgb").text;
+	else
+		source += document.getElementById("argb-linear").text;
+	source += document.getElementById("fragment-shader").text;
+	gl.shaderSource(fragment_shader, source);
+	gl.compileShader(fragment_shader);
+
+	if (!gl.getShaderParameter(fragment_shader, gl.COMPILE_STATUS)) {
+		alert("fragment shader:\n" + gl.getShaderInfoLog(fragment_shader));
+		return;
+	}
+
+	var program = gl.createProgram();
+	gl.attachShader(program, vertex_shader);
+	gl.attachShader(program, fragment_shader);
+	gl.linkProgram(program);
+
+	if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+		alert("linker error:\n" + gl.getProgramInfoLog(program));
+		return;
+	}
+
+	gl.useProgram(program);
+
+	attribute_vertex_position = gl.getAttribLocation(program, "attribute_vertex_position");
+	gl.enableVertexAttribArray(attribute_vertex_position);
+	uniform_camera_up = gl.getUniformLocation(program, "uniform_camera_up");
+	uniform_camera_right = gl.getUniformLocation(program, "uniform_camera_right");
+	uniform_camera_origin = gl.getUniformLocation(program, "uniform_camera_origin");
+	uniform_camera_dir = gl.getUniformLocation(program, "uniform_camera_dir");
+	uniform_camera_near = gl.getUniformLocation(program, "uniform_camera_near");
+	uniform_camera_far = gl.getUniformLocation(program, "uniform_camera_far");
+}
+function v3_normalize(v)
+{
+	var l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+	return [ v[0] / l, v[1] / l, v[2] / l ];
+}
+function v3_cross(a, b)
+{
+	return [
+		a[1] * b[2] - a[2] * b[1],
+		a[2] * b[0] - a[0] * b[2],
+		a[0] * b[1] - a[1] * b[0]
+	];
+}
+function m4_rot(v, a)
+{
+	var c = Math.cos(a);
+	var s = Math.sin(a);
+	return [
+		v[0]*v[0]*(1.0-c)+c,		v[0]*v[1]*(1.0-c)-v[2]*s,	v[0]*v[2]*(1.0-c)+v[1]*s,	0.0,
+		v[1]*v[0]*(1.0-c)+v[2]*s,	v[1]*v[1]*(1.0-c)+c,		v[1]*v[2]*(1.0-c)-v[0]*s,	0.0,
+		v[2]*v[0]*(1.0-c)-v[1]*s,	v[2]*v[1]*(1.0-c)+v[0]*s,	v[2]*v[2]*(1.0-c)+c,		0.0,
+		0.0,				0.0,				0.0,				1.0
+	];
+}
+function m4v3_mul(m, v)
+{
+	return [
+		m[0] * v[0] + m[1] * v[1] + m[2] * v[2] + m[3],
+		m[4] * v[0] + m[5] * v[1] + m[6] * v[2] + m[7],
+		m[8] * v[0] + m[9] * v[1] + m[10] * v[2] + m[11],
+		m[12] * v[0] + m[13] * v[1] + m[14] * v[2] + m[15]
+	];
+}
+function m4_mul(a, b)
+{
+	return [
+		a[0]*b[0]+a[1]*b[4]+a[2]*b[8]+a[3]*b[12], a[0]*b[1]+a[1]*b[5]+a[2]*b[9]+a[3]*b[13], a[0]*b[2]+a[1]*b[6]+a[2]*b[10]+a[3]*b[14], a[0]*b[3]+a[1]*b[7]+a[2]*b[11]+a[3]*b[15],
+		a[4]*b[0]+a[5]*b[4]+a[6]*b[8]+a[7]*b[12], a[4]*b[1]+a[5]*b[5]+a[6]*b[9]+a[7]*b[13], a[4]*b[2]+a[5]*b[6]+a[6]*b[10]+a[7]*b[14], a[4]*b[3]+a[5]*b[7]+a[6]*b[11]+a[7]*b[15],
+		a[8]*b[0]+a[9]*b[4]+a[10]*b[8]+a[11]*b[12], a[8]*b[1]+a[9]*b[5]+a[10]*b[9]+a[11]*b[13], a[8]*b[2]+a[9]*b[6]+a[10]*b[10]+a[11]*b[14], a[8]*b[3]+a[9]*b[7]+a[10]*b[11]+a[11]*b[15],
+		a[12]*b[0]+a[13]*b[4]+a[14]*b[8]+a[15]*b[12], a[12]*b[1]+a[13]*b[5]+a[14]*b[9]+a[15]*b[13], a[12]*b[2]+a[13]*b[6]+a[14]*b[9]+a[15]*b[14], a[12]*b[3]+a[13]*b[7]+a[14]*b[11]+a[15]*b[15]
+	];
+}
+function mouse_move(event)
+{
+	var x = event.clientX;
+	var y = event.clientY;
+	var x_rel = (x - last_x) / canvas.width;
+	var y_rel = (last_y - y) / canvas.height;
+	last_x = x;
+	last_y = y;
+	var rot_x = m4_rot(camera.right, Math.PI * y_rel);
+	var rot_y = m4_rot(camera.up, - Math.PI * x_rel);
+	var rotation = m4_mul(rot_x, rot_y);
+	camera.origin = m4v3_mul(rotation, camera.origin);
+	camera.up = v3_normalize(m4v3_mul(rotation, camera.up));
+	camera.right = v3_normalize(m4v3_mul(rotation, camera.right));
+	camera.dir = v3_cross(camera.up, camera.right);
+	draw();
+}
+function mouse_down(event)
+{
+	last_x = event.clientX;
+	last_y = event.clientY;
+	document.addEventListener("mousemove", mouse_move, false);
+}
+function mouse_up(event)
+{
+	document.removeEventListener("mousemove", mouse_move, false);
+}
+function start()
+{
+	canvas = document.getElementById("canvas");
+	gl = canvas.getContext("webgl");
+	if (!gl)
+		gl = canvas.getContext("experimental-webgl");
+
+	if (!gl) {
+		alert("could not get webgl context");
+		return;
+	}
+
+	gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+	quad_buffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
+	var vertices = [ 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0 ];
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+	compile();
+	draw();
+
+	canvas.addEventListener("mousedown", mouse_down, false);
+	document.addEventListener("mouseup", mouse_up, false);
+}
+function toggle(button)
+{
+	if (button.innerHTML == "disable") {
+		button.innerHTML = "enable";
+	} else {
+		button.innerHTML = "disable";
+	}
+	compile();
+	draw();
+}
+</script>
+</head>
+
+<body onload="start();" style="color: silver; background-color: black">
+<p>toggle srgb correction: <button id="srgb-toggle" onclick="toggle(this);">disable</button></p>
+<canvas id="canvas" style="border: none;" width="512" height="512">
+WebGL not enabled?
+</canvas>
+<footer><small>
+curve.html - visualizing the zero set of a curve using GLSL in WebGL<br />
+Written in 2013 by &lt;Ahmet Inan&gt; &lt;xdsopl@googlemail.com&gt;<br />
+To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide. This software is distributed without any warranty.<br />
+You should have received a copy of the CC0 Public Domain Dedication along with this software. If not, see <a href="http://creativecommons.org/publicdomain/zero/1.0/">http://creativecommons.org/publicdomain/zero/1.0/</a>.
+</small></footer>
+</body>
+
+</html>
