@@ -154,7 +154,7 @@ bool localize(inout struct_interval l, struct_ray ray, float a)
 	float v0 = curve(p0, a);
 	bool test = false;
 //	while (test || k.min >= l.max) {
-	for (int i = 0; i < 100; i++) {
+	for (int i = 0; i < 150; i++) {
 		float x = v0 / dot(ray.d, gradient(p0, a));
 		float step = clamp(abs(x), fine, coarse);
 		k.max = test ? k.max : k.min + step;
@@ -164,6 +164,8 @@ bool localize(inout struct_interval l, struct_ray ray, float a)
 		k.min = test ? k.min : k.max;
 		v0 = v1;
 		p0 = p1;
+		if (test || k.min >= l.max)
+			break;
 	}
 	l.min = test ? k.min : l.min;
 	l.max = test ? k.max : l.max;
@@ -182,6 +184,8 @@ void main()
 		discard;
 	struct_surface surface;
 	surface.t = localize(l, ray, a);
+	if (!surface.t)
+		discard;
 	surface.l = newton(bisect(l, ray, a), ray, a);
 	surface.p = surface.l * ray.d + ray.o;
 	surface.n = normalize(gradient(surface.p, a));
