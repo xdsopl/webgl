@@ -72,15 +72,19 @@ void aabb_ray(inout struct_surface surface, struct_aabb box, struct_ray ray)
 {
 	vec3 a = (box.c0 - ray.o) / ray.d;
 	vec3 b = (box.c1 - ray.o) / ray.d;
-	float l0 = max(max(min(a.x, b.x), min(a.y, b.y)), min(a.z, b.z));
-	float l1 = min(min(max(a.x, b.x), max(a.y, b.y)), max(a.z, b.z));
+	vec3 mi = min(a, b);
+	vec3 ma = max(a, b);
+	float l0 = max(max(mi.x, mi.y), mi.z);
+	float l1 = min(min(ma.x, ma.y), ma.z);
+	vec3 nx = a.x < b.x ? vec3(-1.0, 0.0, 0.0) : vec3(1.0, 0.0, 0.0);
+	vec3 ny = a.y < b.y ? vec3(0.0, -1.0, 0.0) : vec3(0.0, 1.0, 0.0);
+	vec3 nz = a.z < b.z ? vec3(0.0, 0.0, -1.0) : vec3(0.0, 0.0, 1.0);
+	vec3 n0 = mi.x > mi.y ? (mi.x > mi.z ? nx : nz) : (mi.y > mi.z ? ny : nz);
+	vec3 n1 = ma.x < ma.y ? (ma.x < ma.z ? nx : nz) : (ma.y < ma.z ? ny : nz);
 	struct_surface tmp;
 	tmp.l = l0 < 0.0 ? l1 : l0;
+	tmp.n = l0 < 0.0 ? n1 : n0;
 	tmp.p = tmp.l * ray.d + ray.o;
-	// no select function in essl .. you've gotta be kidding!
-	tmp.n.x = a.x == tmp.l ? -1.0 : b.x == tmp.l ? 1.0 : 0.0;
-	tmp.n.y = a.y == tmp.l ? -1.0 : b.y == tmp.l ? 1.0 : 0.0;
-	tmp.n.z = a.z == tmp.l ? -1.0 : b.z == tmp.l ? 1.0 : 0.0;
 	tmp.t = l0 < l1 && 0.0 <= tmp.l && tmp.l < surface.l;
 	surface = tmp.t ? tmp : surface;
 }
