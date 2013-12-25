@@ -99,17 +99,17 @@ float curve_xyza(float x, float y, float z, float a)
 float deriv_x(float x, float y, float z, float a)
 {
 //	return 2*(sqrt(5)+1)^2*a^2*x*((sqrt(5)+1)^2*a^2*y^2/4-z^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*x*(z^2+y^2+x^2-1)-8*x*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*((sqrt(5)+1)^2*a^2*y^2/4-z^2);
-	return 2.0*sq(sqrt(5.0)+1.0)*sq(a)*x*sq((sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*sq((sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*x*(sq(z)+sq(y)+sq(x)-1.0)-8.0*x*sq((sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*sq((sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z));
+	return 2.0*sq(sqrt(5.0)+1.0)*sq(a)*x*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*x*(sq(z)+sq(y)+sq(x)-1.0)-8.0*x*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z));
 }
 float deriv_y(float x, float y, float z, float a)
 {
 //	return -8*y*((sqrt(5)+1)^2*a^2*y^2/4-z^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)+2*(sqrt(5)+1)^2*a^2*y*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*y*(z^2+y^2+x^2-1);
-	return -8.0*y*sq((sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*sq((sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))+2.0*sq(sqrt(5.0)+1.0)*sq(a)*y*sq((sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*sq((sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*y*(sq(z)+sq(y)+sq(x)-1.0);
+	return -8.0*y*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))+2.0*sq(sqrt(5.0)+1.0)*sq(a)*y*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*y*(sq(z)+sq(y)+sq(x)-1.0);
 }
 float deriv_z(float x, float y, float z, float a)
 {
 //	return -8*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*z*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*z*(z^2+y^2+x^2-1)+2*(sqrt(5)+1)^2*a^2*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*z*((sqrt(5)+1)^2*a^2*y^2/4-z^2);
-	return -8.0*sq((sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*sq((sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*z*(sq(z)+sq(y)+sq(x)-1.0)+2.0*sq(sqrt(5.0)+1.0)*sq(a)*sq((sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*sq((sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z));
+	return -8.0*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*z*(sq(z)+sq(y)+sq(x)-1.0)+2.0*sq(sqrt(5.0)+1.0)*sq(a)*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z));
 }
 float curve(vec3 v, float a)
 {
