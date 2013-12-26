@@ -143,6 +143,7 @@ var camera = {
 var uniform_camera_up, uniform_camera_right, uniform_camera_origin;
 var uniform_camera_dir, uniform_camera_near, uniform_camera_far;
 var last_x, last_y;
+var request = 0;
 function update()
 {
 	gl.clear(gl.COLOR_BUFFER_BIT);
@@ -155,10 +156,12 @@ function update()
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	gl.vertexAttribPointer(attribute_vertex_position, 2, gl.FLOAT, false, 0, 0);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+	request = 0;
 }
 function draw()
 {
-	window.requestAnimationFrame(update);
+	if (!request)
+		request = window.requestAnimationFrame(update);
 }
 function compile()
 {
