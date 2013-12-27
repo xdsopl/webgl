@@ -45,6 +45,13 @@ vec4 argb(float r, float g, float b)
 }
 </script>
 
+<script id="fragment-utils" type="x-shader/x-fragment">
+float sq(float x)
+{
+	return x * x;
+}
+</script>
+
 <script id="fragment-shader" type="x-shader/x-fragment">
 varying vec3 varying_pixel_position;
 uniform vec3 uniform_camera_origin;
@@ -86,30 +93,6 @@ vec4 color(struct_surface surface, struct_ray ray)
 {
 	float v = surface.t ? dot(surface.n, ray.d) : 0.0;
 	return v < 0.0 ? argb(0.0, -v, 0.0) : argb(v, 0.0, 0.0);
-}
-float sq(float x)
-{
-	return x * x;
-}
-float curve_xyza(float x, float y, float z, float a)
-{
-//	return 4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2;
-	return 4.0*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(x)-1.0*sq(y))*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(y)-1.0*sq(z))*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(z)-1.0*sq(x))-1.0*(1.0+2.0*(a*(1.0+sqrt(5.0))/2.0))*sq(sq(x)+sq(y)+sq(z)-1.0*1.0);
-}
-float deriv_x(float x, float y, float z, float a)
-{
-//	return 2*(sqrt(5)+1)^2*a^2*x*((sqrt(5)+1)^2*a^2*y^2/4-z^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*x*(z^2+y^2+x^2-1)-8*x*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*((sqrt(5)+1)^2*a^2*y^2/4-z^2);
-	return 2.0*sq(sqrt(5.0)+1.0)*sq(a)*x*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*x*(sq(z)+sq(y)+sq(x)-1.0)-8.0*x*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z));
-}
-float deriv_y(float x, float y, float z, float a)
-{
-//	return -8*y*((sqrt(5)+1)^2*a^2*y^2/4-z^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)+2*(sqrt(5)+1)^2*a^2*y*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*y*(z^2+y^2+x^2-1);
-	return -8.0*y*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))+2.0*sq(sqrt(5.0)+1.0)*sq(a)*y*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*y*(sq(z)+sq(y)+sq(x)-1.0);
-}
-float deriv_z(float x, float y, float z, float a)
-{
-//	return -8*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*z*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*z*(z^2+y^2+x^2-1)+2*(sqrt(5)+1)^2*a^2*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*z*((sqrt(5)+1)^2*a^2*y^2/4-z^2);
-	return -8.0*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*z*(sq(z)+sq(y)+sq(x)-1.0)+2.0*sq(sqrt(5.0)+1.0)*sq(a)*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z));
 }
 float curve(vec3 v, float a)
 {
@@ -226,6 +209,30 @@ function draw()
 	if (!request)
 		request = window.requestAnimationFrame(update);
 }
+function curve_xyza()
+{
+//	return 4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2;
+	var str = "4.0*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(x)-1.0*sq(y))*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(y)-1.0*sq(z))*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(z)-1.0*sq(x))-1.0*(1.0+2.0*(a*(1.0+sqrt(5.0))/2.0))*sq(sq(x)+sq(y)+sq(z)-1.0*1.0)";
+	return "float curve_xyza(float x, float y, float z, float a) { return " + str + "; }";
+}
+function deriv_x()
+{
+//	return 2*(sqrt(5)+1)^2*a^2*x*((sqrt(5)+1)^2*a^2*y^2/4-z^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*x*(z^2+y^2+x^2-1)-8*x*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*((sqrt(5)+1)^2*a^2*y^2/4-z^2);
+	var str = "2.0*sq(sqrt(5.0)+1.0)*sq(a)*x*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*x*(sq(z)+sq(y)+sq(x)-1.0)-8.0*x*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))";
+	return "float deriv_x(float x, float y, float z, float a) { return " + str + "; }";
+}
+function deriv_y()
+{
+//	return -8*y*((sqrt(5)+1)^2*a^2*y^2/4-z^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)+2*(sqrt(5)+1)^2*a^2*y*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*y*(z^2+y^2+x^2-1);
+	var str = "-8.0*y*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))+2.0*sq(sqrt(5.0)+1.0)*sq(a)*y*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*y*(sq(z)+sq(y)+sq(x)-1.0)";
+	return "float deriv_y(float x, float y, float z, float a) { return " + str + "; }";
+}
+function deriv_z()
+{
+//	return -8*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*z*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*z*(z^2+y^2+x^2-1)+2*(sqrt(5)+1)^2*a^2*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*z*((sqrt(5)+1)^2*a^2*y^2/4-z^2);
+	var str = "-8.0*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*z*(sq(z)+sq(y)+sq(x)-1.0)+2.0*sq(sqrt(5.0)+1.0)*sq(a)*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))";
+	return "float deriv_z(float x, float y, float z, float a) { return " + str + "; }";
+}
 function compile()
 {
 	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
@@ -239,6 +246,11 @@ function compile()
 
 	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
 	var source = "precision highp float;\n";
+	source += document.getElementById("fragment-utils").text;
+	source += curve_xyza();
+	source += deriv_x();
+	source += deriv_y();
+	source += deriv_z();
 	if (document.getElementById("srgb-toggle").innerHTML == "disable")
 		source += document.getElementById("argb-srgb").text;
 	else
