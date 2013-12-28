@@ -233,9 +233,13 @@ function deriv_z()
 	var str = "-8.0*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*z*(sq(z)+sq(y)+sq(x)-1.0)+2.0*sq(sqrt(5.0)+1.0)*sq(a)*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))";
 	return "float deriv_z(float x, float y, float z, float a) { return " + str + "; }";
 }
-function error(str, begin, end, msg)
+var parser_left;
+var parser_right;
+var parser_op;
+var parser_str;
+function error(msg, begin, end)
 {
-	var tmp = str + "\n";
+	var tmp = parser_str + "\n";
 	for (var i = 0; i < begin; i++)
 		tmp += " ";
 	for (var i = begin; i <= end; i++)
@@ -275,26 +279,41 @@ var token_sqrt = 12;
 var token_sin = 13;
 var token_cos = 14;
 var token_paran = 15;
-function node_token(left, token, right)
+function node_token(left, token, right, begin, end)
 {
 	this.left = left;
 	this.right = right;
 	this.token = token;
+	this.begin = begin;
+	this.end = end;
 }
-function node_num(value)
+function node_unary(token, right, begin, end)
+{
+	this.right = right;
+	this.token = token;
+	this.begin = begin;
+	this.end = end;
+}
+function node_num(value, begin, end)
 {
 	this.token = token_num;
 	this.value = value;
+	this.begin = begin;
+	this.end = end;
 }
-function node_pow(left, exponent)
+function node_pow(left, exponent, begin, end)
 {
 	this.left = left;
 	this.token = token_pow;
 	this.value = exponent;
+	this.begin = begin;
+	this.end = end;
 }
-function node_var(token)
+function node_var(token, begin, end)
 {
 	this.token = token;
+	this.begin = begin;
+	this.end = end;
 }
 function token_prio(token)
 {
@@ -322,26 +341,79 @@ function integer(f)
 {
 	return f == Math.round(f);
 }
-var left;
-var right;
-var op;
+function handle_pow(left, right)
+{
+	if (token_num != right.token)
+		return error("exponent not a number", right.begin, right.end);
+	if (token_num != left.token && !integer(right.value))
+		return error("exponent not integer", right.begin, right.end);
+	if (right.value < 0.0)
+		return error("exponent is negative", right.begin, right.end);
+	return new node_pow(left, right.value, left.begin, right.end);
+}
+function handle_div(left, right)
+{
+	if (token_num != right.token)
+		return error("divisor not a number", right.begin, right.end);
+	if (0.0 == right.value)
+		return error("divisor is zero", right.begin, right.end);
+	return new node_token(left, token_div, right, left.begin, right.end);
+}
+function handle_sqrt(right, begin)
+{
+	if (token_num != right.token)
+		return error("argument not a number", right.begin, right.end);
+	if (0.0 > right.value)
+		return error("argument is negative", right.begin, right.end);
+	return new node_unary(token_sqrt, right, begin, right.end);
+}
+function handle_sin(right, begin)
+{
+	if (token_num != right.token)
+		return error("argument not a number", right.begin, right.end);
+	return new node_unary(token_sin, right, begin, right.end);
+}
+function handle_cos(right, begin)
+{
+	if (token_num != right.token)
+		return error("argument not a number", right.begin, right.end);
+	return new node_unary(token_cos, right, begin, right.end);
+}
+function handle_node(left, token, right, begin, end)
+{
+	switch (token) {
+		case token_pow:
+			return handle_pow(left, right);
+		case token_div:
+			return handle_div(left, right);
+		case token_sqrt:
+			return handle_sqrt(right, begin);
+		case token_sin:
+			return handle_sin(right, begin);
+		case token_cos:
+			return handle_cos(right, begin);
+		default:
+			return new node_token(left, token, right, begin, end);
+	}
+}
 function operand(node)
 {
-	if (!left && !op) {
-		left = node;
-	} else if (op && !right) {
-		right = node;
+	if (!parser_left && !parser_op) {
+		parser_left = node;
+	} else if (parser_op && !parser_right) {
+		parser_right = node;
 	} else {
-		return false;
+		return error("syntax error", node.begin, node.end);
 	}
 	return true;
 }
 function parse()
 {
 	var str = document.getElementById("curve-input").value;
-	left = 0;
-	right = 0;
-	op = 0;
+	parser_str = str;
+	parser_left = 0;
+	parser_right = 0;
+	parser_op = 0;
 	for (var pos = 0; pos < str.length; pos++) {
 		switch (str[pos]) {
 			case ' ':
@@ -361,32 +433,32 @@ function parse()
 				var dot = 0;
 				while (pos < str.length && ('0' <= str[pos] && str[pos] <= '9' || '.' == str[pos])) {
 					if ('.' == str[pos] && ++dot > 1)
-						return error(str, pos, pos, "there can be only one");
+						return error("there can be only one", pos, pos);
 					pos++;
 				}
 				pos--;
-				if (!operand(new node_num(a2f(str.substr(begin, pos-begin+1)))))
-					return error(str, begin, pos, "syntax error");
+				if (!operand(new node_num(a2f(str.substr(begin, pos-begin+1)), begin, pos)))
+					return false;
 				break;
 			case 'x':
-				if (!operand(new node_var(token_x)))
-					return error(str, pos, pos, "syntax error");
+				if (!operand(new node_var(token_x, pos, pos)))
+					return false;
 				break;
 			case 'y':
-				if (!operand(new node_var(token_y)))
-					return error(str, pos, pos, "syntax error");
+				if (!operand(new node_var(token_y, pos, pos)))
+					return false;
 				break;
 			case 'z':
-				if (!operand(new node_var(token_z)))
-					return error(str, pos, pos, "syntax error");
+				if (!operand(new node_var(token_z, pos, pos)))
+					return false;
 				break;
 			case 'a':
-				if (!operand(new node_var(token_a)))
-					return error(str, pos, pos, "syntax error");
+				if (!operand(new node_var(token_a, pos, pos)))
+					return false;
 				break;
 			case 'c':
 				if ("cos" != str.substr(pos, 3))
-					return error(str, pos, pos, "unkown");
+					return error("unkown", pos, pos);
 				pos += 2;
 				break;
 			case 's':
@@ -395,14 +467,14 @@ function parse()
 				} else if ("sin" == str.substr(pos, 3)) {
 					pos += 2;
 				} else {
-					return error(str, pos, pos, "unkown");
+					return error("unkown", pos, pos);
 				}
 				break;
 			case 'P':
 				if ("PI" != str.substr(pos, 2))
-					return error(str, pos, pos, "unkown");
-				if (!operand(new node_num(Math.PI)))
-					return error(str, pos, pos+1, "syntax error");
+					return error("unkown", pos, pos);
+				if (!operand(new node_num(Math.PI, pos, pos+1)))
+					return false;
 				pos += 1;
 				break;
 			case '^':
@@ -420,7 +492,7 @@ function parse()
 			case ')':
 				break;
 			default:
-				return error(str, pos, pos, "unkown");
+				return error("unkown", pos, pos);
 		}
 	}
 	document.getElementById("curve-output").innerHTML = "";
