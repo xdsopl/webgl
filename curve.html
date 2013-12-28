@@ -242,6 +242,7 @@ function error(str, begin, end, msg)
 		tmp += "~";
 	tmp += "\n" + msg;
 	document.getElementById("curve-output").innerHTML = tmp;
+	return false;
 }
 function a2f(s)
 {
@@ -258,10 +259,89 @@ function a2f(s)
 	}
 	return r;
 }
+var token_err = 0;
+var token_x = 1;
+var token_y = 2;
+var token_z = 3;
+var token_a = 4;
+var token_add = 5;
+var token_sub = 6;
+var token_mul = 7;
+var token_div = 8;
+var token_neg = 9;
+var token_num = 10;
+var token_pow = 11;
+var token_sqrt = 12;
+var token_sin = 13;
+var token_cos = 14;
+var token_paran = 15;
+function node_token(left, token, right)
+{
+	this.left = left;
+	this.right = right;
+	this.token = token;
+}
+function node_num(value)
+{
+	this.token = token_num;
+	this.value = value;
+}
+function node_pow(left, exponent)
+{
+	this.left = left;
+	this.token = token_pow;
+	this.value = exponent;
+}
+function node_var(token)
+{
+	this.token = token;
+}
+function token_prio(token)
+{
+	switch (token) {
+		case token_paran:
+			return -1;
+		case token_sqrt:
+		case token_sin:
+		case token_cos:
+			return 4;
+		case token_pow:
+			return 3;
+		case token_div:
+			return 2;
+		case token_mul:
+			return 1;
+		case token_add:
+		case token_sub:
+		case token_neg:
+		default:
+			return 0;
+	}
+}
+function integer(f)
+{
+	return f == Math.round(f);
+}
+var left;
+var right;
+var op;
+function operand(node)
+{
+	if (!left && !op) {
+		left = node;
+	} else if (op && !right) {
+		right = node;
+	} else {
+		return false;
+	}
+	return true;
+}
 function parse()
 {
 	var str = document.getElementById("curve-input").value;
-	var tmp = "";
+	left = 0;
+	right = 0;
+	op = 0;
 	for (var pos = 0; pos < str.length; pos++) {
 		switch (str[pos]) {
 			case ' ':
@@ -278,36 +358,41 @@ function parse()
 			case '8':
 			case '9':
 				var begin = pos;
-				while (pos < str.length && ('0' <= str[pos] && str[pos] <= '9' || '.' == str[pos]))
+				var dot = 0;
+				while (pos < str.length && ('0' <= str[pos] && str[pos] <= '9' || '.' == str[pos])) {
+					if ('.' == str[pos] && ++dot > 1)
+						return error(str, pos, pos, "there can be only one");
 					pos++;
-				var v = a2f(str.substr(begin, pos-begin));
+				}
 				pos--;
-				tmp += v.toString();
+				if (!operand(new node_num(a2f(str.substr(begin, pos-begin+1)))))
+					return error(str, begin, pos, "syntax error");
 				break;
 			case 'x':
-				tmp += "x";
+				if (!operand(new node_var(token_x)))
+					return error(str, pos, pos, "syntax error");
 				break;
 			case 'y':
-				tmp += "y";
+				if (!operand(new node_var(token_y)))
+					return error(str, pos, pos, "syntax error");
 				break;
 			case 'z':
-				tmp += "z";
+				if (!operand(new node_var(token_z)))
+					return error(str, pos, pos, "syntax error");
 				break;
 			case 'a':
-				tmp += "a";
+				if (!operand(new node_var(token_a)))
+					return error(str, pos, pos, "syntax error");
 				break;
 			case 'c':
 				if ("cos" != str.substr(pos, 3))
 					return error(str, pos, pos, "unkown");
 				pos += 2;
-				tmp += "cos";
 				break;
 			case 's':
 				if ("sqrt" == str.substr(pos, 4)) {
-					tmp += "sqrt";
 					pos += 3;
 				} else if ("sin" == str.substr(pos, 3)) {
-					tmp += "sin";
 					pos += 2;
 				} else {
 					return error(str, pos, pos, "unkown");
@@ -316,35 +401,29 @@ function parse()
 			case 'P':
 				if ("PI" != str.substr(pos, 2))
 					return error(str, pos, pos, "unkown");
+				if (!operand(new node_num(Math.PI)))
+					return error(str, pos, pos+1, "syntax error");
 				pos += 1;
-				tmp += "PI";
 				break;
 			case '^':
-				tmp += "^";
 				break;
 			case '*':
-				tmp += "*";
 				break;
 			case '/':
-				tmp += "/";
 				break;
 			case '+':
-				tmp += "+";
 				break;
 			case '-':
-				tmp += "-";
 				break;
 			case '(':
-				tmp += "(";
 				break;
 			case ')':
-				tmp += ")";
 				break;
 			default:
 				return error(str, pos, pos, "unkown");
 		}
 	}
-	document.getElementById("curve-output").innerHTML = tmp;
+	document.getElementById("curve-output").innerHTML = "";
 }
 function compile()
 {
