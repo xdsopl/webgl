@@ -5,9 +5,9 @@ You should have received a copy of the CC0 Public Domain Dedication along with t
 
 just open the *.html files in your WebGL capable Browser!
 
-(maybe old) examples:
-http://aam.mathematik.uni-freiburg.de/IAM/homepages/ainan/mandelbrot.html
-http://aam.mathematik.uni-freiburg.de/IAM/homepages/ainan/srgb.html
-http://aam.mathematik.uni-freiburg.de/IAM/homepages/ainan/raytracing.html
-http://aam.mathematik.uni-freiburg.de/IAM/homepages/ainan/curve.html
+examples:
+https://rawgithub.com/xdsopl/webgl/master/mandelbrot.html
+https://rawgithub.com/xdsopl/webgl/master/srgb.html
+https://rawgithub.com/xdsopl/webgl/master/raytracing.html
+https://rawgithub.com/xdsopl/webgl/master/curve.html
 
