@@ -371,10 +371,200 @@ function integer(f)
 {
 	return f == Math.round(f);
 }
+function is_num(node)
+{
+	return node.token == token_num;
+}
+function is_zero(node)
+{
+	return is_num(node) && 0.0 == node.value;
+}
+function is_one(node)
+{
+	return is_num(node) && 1.0 == node.value;
+}
+function func_add(a, b)
+{
+	return a + b;
+}
+function func_mul(a, b)
+{
+	return a * b;
+}
+function commutative(node, token, func)
+{
+	if (is_num(node.left) && token == node.right.token && is_num(node.right.left)) {
+		node.left = new node_num(func(node.left.value, node.right.left.value), node.left.begin, node.right.left.end);
+		node.right = node.right.right;
+		return node;
+	}
+	if (token == node.left.token && is_num(node.left.left) && token == node.right.token && is_num(node.right.left)) {
+		node.left.left = new node_num(func(node.left.left.value, node.right.left.value), node.left.left.begin, node.right.left.end);
+		node.right.left = node.left.right;
+		node.left.right = node.right;
+		return node.left;
+	}
+	if (token == node.left.token && is_num(node.left.left)) {
+		var tmp = node.left;
+		node.left = node.left.left;
+		node.left.left = node.right;
+		node.right = tmp;
+		return node;
+	}
+	if (token == node.right.token && is_num(node.right.left)) {
+		var tmp = node.right.left;
+		node.right.left = node.left;
+		node.left = tmp;
+		return node;
+	}
+	return node;
+}
+function reduce(node)
+{
+	switch (node.token) {
+		case token_x:
+		case token_y:
+		case token_z:
+		case token_a:
+		case token_num:
+			return node;
+		case token_pow:
+			if (0.0 == node.value)
+				return new node_num(1.0, node.left.begin, node.end);
+			if (1.0 == node.value)
+				return reduce(node.left);
+			if (is_zero(node.left) || is_one(node.left))
+				return node.left;
+			if (is_num(node.left))
+				return new node_num(Math.pow(node.left.value, node.value), node.left.begin, node.end);
+			node.left = reduce(node.left);
+			if (is_zero(node.left) || is_one(node.left))
+				return node.left;
+			if (is_num(node.left))
+				return new node_num(Math.pow(node.left.value, node.value), node.left.begin, node.end);
+			return node;
+		case token_mul:
+			if (is_zero(node.left) || is_zero(node.right))
+				return new node_num(0.0, node.left.begin, node.right.end);
+			if (is_num(node.left) && is_num(node.right))
+				return new node_num(node.left.value * node.right.value, node.left.begin, node.right.end);
+			if (is_one(node.left))
+				return reduce(node.right);
+			if (is_one(node.right))
+				return reduce(node.left);
+			node.left = reduce(node.left);
+			if (is_zero(node.left))
+				return node.left;
+			node.right = reduce(node.right);
+			if (is_zero(node.right))
+				return node.right;
+			if (!is_num(node.left) && is_num(node.right)){
+				var tmp = node.left;
+				node.left = node.right;
+				node.right = tmp;
+			}
+			if (is_num(node.left) && is_num(node.right))
+				return new node_num(node.left.value * node.right.value, node.left.begin, node.right.end);
+			if (is_one(node.left))
+				return reduce(node.right);
+			if (is_one(node.right))
+				return reduce(node.left);
+			return commutative(node, token_mul, func_mul);
+		case token_div:
+			if (is_num(node.left) && is_num(node.right))
+				return new node_num(node.left.value / node.right.value, node.left.begin, node.right.end);
+			if (is_zero(node.left))
+				return node.left;
+			if (is_one(node.right))
+				return reduce(node.left);
+			node.left = reduce(node.left);
+			if (is_zero(node.left))
+				return node.left;
+			node.right = reduce(node.right);
+			if (is_one(node.right))
+				return node.left;
+			if (is_num(node.left) && is_num(node.right))
+				return new node_num(node.left.value / node.right.value, node.left.begin, node.right.end);
+			if (is_num(node.right))
+				return new node_token(new node_num(1.0 / node.right.value, node.begin, node.right.end), token_mul, node.left, node.left.begin, node.right.end);
+			return node;
+		case token_add:
+			if (is_num(node.left) && is_num(node.right))
+				return new node_num(node.left.value + node.right.value, node.left.begin, node.right.end);
+			if (is_zero(node.left))
+				return reduce(node.right);
+			if (is_zero(node.right))
+				return reduce(node.left);
+			node.left = reduce(node.left);
+			node.right = reduce(node.right);
+			if (is_zero(node.left))
+				return node.right;
+			if (is_zero(node.right))
+				return node.left;
+			if (!is_num(node.left) && is_num(node.right)) {
+				var tmp = node.left;
+				node.left = node.right;
+				node.right = tmp;
+			}
+			if (is_num(node.left) && is_num(node.right))
+				return new node_num(node.left.value + node.right.value, node.left.begin, node.right.end);
+			return commutative(node, token_add, func_add);
+		case token_sub:
+			if (is_num(node.left) && is_num(node.right))
+				return new node_num(node.left.value - node.right.value, node.left.begin, node.right.end);
+			if (is_zero(node.right))
+				return reduce(node.left);
+			node.left = reduce(node.left);
+			node.right = reduce(node.right);
+			if (is_zero(node.right))
+				return node.left;
+			if (is_num(node.left) && is_num(node.right))
+				return new node_num(node.left.value - node.right.value, node.left.begin, node.right.end);
+			if (is_zero(node.left)) {
+				node.left = 0;
+				node.token = token_neg;
+				return node;
+			}
+			return node;
+		case token_neg:
+			if (is_num(node.right))
+				return new node_num(-node.right.value, node.begin, node.right.end);
+			node.right = reduce(node.right);
+			if (is_num(node.right))
+				return new node_num(-node.right.value, node.begin, node.right.end);
+			return node;
+		case token_sqrt:
+			if (is_num(node.right))
+				return new node_num(Math.sqrt(node.right.value), node.begin, node.right.end);
+			node.right = reduce(node.right);
+			if (is_num(node.right))
+				return new node_num(Math.sqrt(node.right.value), node.begin, node.right.end);
+			return node;
+		case token_sin:
+			if (is_num(node.right))
+				return new node_num(Math.sin(node.right.value), node.begin, node.right.end);
+			node.right = reduce(node.right);
+			if (is_num(node.right))
+				return new node_num(Math.sin(node.right.value), node.begin, node.right.end);
+			return node;
+		case token_cos:
+			if (is_num(node.right))
+				return new node_num(Math.cos(node.right.value), node.begin, node.right.end);
+			node.right = reduce(node.right);
+			if (is_num(node.right))
+				return new node_num(Math.cos(node.right.value), node.begin, node.right.end);
+			return node;
+		case token_err:
+		default:
+			return token_err;
+	}
+}
 function handle_pow(left, right)
 {
 	if (token_num != right.token)
-		return error("exponent not a number", right.begin, right.end);
+		right = reduce(right);
+	if (token_num != right.token)
+		return error("exponent does not reduce to number", right.begin, right.end);
 	if (token_num != left.token && !integer(right.value))
 		return error("exponent not integer", right.begin, right.end);
 	if (right.value < 0.0)
@@ -384,7 +574,9 @@ function handle_pow(left, right)
 function handle_div(left, right)
 {
 	if (token_num != right.token)
-		return error("divisor not a number", right.begin, right.end);
+		right = reduce(right);
+	if (token_num != right.token)
+		return error("divisor does not reduce to number", right.begin, right.end);
 	if (0.0 == right.value)
 		return error("divisor is zero", right.begin, right.end);
 	return new node_token(left, token_div, right, left.begin, right.end);
@@ -392,7 +584,9 @@ function handle_div(left, right)
 function handle_sqrt(right, begin)
 {
 	if (token_num != right.token)
-		return error("argument not a number", right.begin, right.end);
+		right = reduce(right);
+	if (token_num != right.token)
+		return error("argument does not reduce to number", right.begin, right.end);
 	if (0.0 > right.value)
 		return error("argument is negative", right.begin, right.end);
 	return new node_unary(token_sqrt, right, begin, right.end);
@@ -400,13 +594,17 @@ function handle_sqrt(right, begin)
 function handle_sin(right, begin)
 {
 	if (token_num != right.token)
-		return error("argument not a number", right.begin, right.end);
+		right = reduce(right);
+	if (token_num != right.token)
+		return error("argument does not reduce to number", right.begin, right.end);
 	return new node_unary(token_sin, right, begin, right.end);
 }
 function handle_cos(right, begin)
 {
 	if (token_num != right.token)
-		return error("argument not a number", right.begin, right.end);
+		right = reduce(right);
+	if (token_num != right.token)
+		return error("argument does not reduce to number", right.begin, right.end);
 	return new node_unary(token_cos, right, begin, right.end);
 }
 function handle_node(left, token, right, begin, end)
