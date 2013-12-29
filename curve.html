@@ -50,6 +50,7 @@ varying vec3 varying_pixel_position;
 uniform vec3 uniform_camera_origin;
 uniform float uniform_camera_near;
 uniform float uniform_camera_far;
+uniform float uniform_a;
 struct struct_interval
 {
 	float min, max;
@@ -149,7 +150,7 @@ bool localize(inout struct_interval l, struct_ray ray, float a)
 }
 void main()
 {
-	float a = 1.0;
+	float a = uniform_a;
 	struct_ray ray;
 	ray.d = normalize(varying_pixel_position);
 	ray.o = uniform_camera_origin;
@@ -181,6 +182,8 @@ var camera = {
 };
 var uniform_camera_up, uniform_camera_right, uniform_camera_origin;
 var uniform_camera_dir, uniform_camera_near, uniform_camera_far;
+var value_a = 1.0;
+var uniform_a;
 var last_x, last_y;
 var request = 0;
 function update()
@@ -192,6 +195,7 @@ function update()
 	gl.uniform3f(uniform_camera_dir, camera.dir[0], camera.dir[1], camera.dir[2]);
 	gl.uniform1f(uniform_camera_near, camera.near);
 	gl.uniform1f(uniform_camera_far, camera.far);
+	gl.uniform1f(uniform_a, value_a);
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	gl.vertexAttribPointer(attribute_vertex_position, 2, gl.FLOAT, false, 0, 0);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -1060,6 +1064,7 @@ function compile()
 	uniform_camera_dir = gl.getUniformLocation(program, "uniform_camera_dir");
 	uniform_camera_near = gl.getUniformLocation(program, "uniform_camera_near");
 	uniform_camera_far = gl.getUniformLocation(program, "uniform_camera_far");
+	uniform_a = gl.getUniformLocation(program, "uniform_a");
 }
 function build(name, node)
 {
@@ -1189,6 +1194,12 @@ function toggle(button)
 	compile();
 	draw();
 }
+function set_a(a)
+{
+	value_a = a;
+	document.getElementById("a-output").innerHTML = "a=" + a;
+	draw();
+}
 function heart()
 {
 	document.getElementById("curve-input").value = "(2*x^2 + y^2 + z^2 - 1)^3 - x^2*z^3/10 - y^2*z^3";
@@ -1235,6 +1246,7 @@ function sextic()
 <body onload="start();" style="color: silver; background-color: black">
 <p>toggle srgb correction: <button id="srgb-toggle" onclick="toggle(this);">disable</button></p>
 <p><button onclick="heart();">heart</button><button onclick="torus();">torus</button><button onclick="cross();">cross</button><button onclick="paraboloid();">paraboloid</button><button onclick="cone();">cone</button><button onclick="cylinder();">cylinder</button><button onclick="chmutov();">chmutov</button><button onclick="sextic();">sextic</button></p>
+<p><input type="range" onchange="set_a(this.value);" min="0" max="1" step="0.01" value="1"><span id="a-output">a=1</span></p>
 <canvas id="canvas" style="border: none;" width="512" height="512">
 WebGL not enabled?
 </canvas>
