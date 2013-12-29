@@ -209,25 +209,8 @@ function draw()
 	if (!request)
 		request = window.requestAnimationFrame(update);
 }
-function deriv_x()
-{
-//	return 2*(sqrt(5)+1)^2*a^2*x*((sqrt(5)+1)^2*a^2*y^2/4-z^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*x*(z^2+y^2+x^2-1)-8*x*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*((sqrt(5)+1)^2*a^2*y^2/4-z^2);
-	var str = "2.0*sq(sqrt(5.0)+1.0)*sq(a)*x*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*x*(sq(z)+sq(y)+sq(x)-1.0)-8.0*x*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))";
-	return "float deriv_x(float x, float y, float z, float a) { return " + str + "; }";
-}
-function deriv_y()
-{
-//	return -8*y*((sqrt(5)+1)^2*a^2*y^2/4-z^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)+2*(sqrt(5)+1)^2*a^2*y*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*y*(z^2+y^2+x^2-1);
-	var str = "-8.0*y*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))+2.0*sq(sqrt(5.0)+1.0)*sq(a)*y*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*y*(sq(z)+sq(y)+sq(x)-1.0)";
-	return "float deriv_y(float x, float y, float z, float a) { return " + str + "; }";
-}
-function deriv_z()
-{
-//	return -8*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*z*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*z*(z^2+y^2+x^2-1)+2*(sqrt(5)+1)^2*a^2*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*z*((sqrt(5)+1)^2*a^2*y^2/4-z^2);
-	var str = "-8.0*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*z*(sq(z)+sq(y)+sq(x)-1.0)+2.0*sq(sqrt(5.0)+1.0)*sq(a)*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))";
-	return "float deriv_z(float x, float y, float z, float a) { return " + str + "; }";
-}
 var curve_xyza_str;
+var deriv_x, deriv_y, deriv_z;
 var parser_left;
 var parser_right;
 var parser_op;
@@ -566,6 +549,77 @@ function reduce(node)
 			if (is_num(node.right))
 				return new num_span(Math.cos(node.right.value), node.begin, node.right.end);
 			return node;
+		case token_err:
+		default:
+			return token_err;
+	}
+}
+function deriv(node, token)
+{
+	switch (node.token) {
+		case token_x:
+			if (token_x == token)
+				return new num_leaf(1.0);
+			else
+				return new num_leaf(0.0);
+		case token_y:
+			if (token_y == token)
+				return new num_leaf(1.0);
+			else
+				return new num_leaf(0.0);
+		case token_z:
+			if (token_z == token)
+				return new num_leaf(1.0);
+			else
+				return new num_leaf(0.0);
+		case token_a:
+			if (token_a == token)
+				return new num_leaf(1.0);
+			else
+				return new num_leaf(0.0);
+		case token_num:
+			return new num_leaf(0.0);
+		case token_pow:
+			return new token_node(
+				deriv(node.left, token),
+				token_mul,
+				new token_node(
+					new num_leaf(node.value),
+					token_mul,
+					new pow_node(
+						node.left,
+						node.value-1.0
+					)
+				)
+			);
+		case token_mul:
+			return new token_node(
+				new token_node(
+					deriv(node.left, token),
+					token_mul,
+					node.right
+				),
+				token_add,
+				new token_node(
+					node.left,
+					token_mul,
+					deriv(node.right, token)
+				)
+			);
+		case token_add:
+			return new token_node(
+				deriv(node.left, token),
+				token_add,
+				deriv(node.right, token)
+			);
+		case token_sub:
+			return new token_node(
+				deriv(node.left, token),
+				token_sub,
+				deriv(node.right, token)
+			);
+		case token_neg:
+			return new token_node(0, token_neg, deriv(node.right, token));
 		case token_err:
 		default:
 			return token_err;
@@ -978,9 +1032,9 @@ function compile()
 	var source = "precision highp float;\n";
 	source += document.getElementById("fragment-utils").text;
 	source += curve_xyza_str;
-	source += deriv_x();
-	source += deriv_y();
-	source += deriv_z();
+	source += deriv_x_str;
+	source += deriv_y_str;
+	source += deriv_z_str;
 	if (document.getElementById("srgb-toggle").innerHTML == "disable")
 		source += document.getElementById("argb-srgb").text;
 	else
@@ -1015,18 +1069,28 @@ function compile()
 	uniform_camera_near = gl.getUniformLocation(program, "uniform_camera_near");
 	uniform_camera_far = gl.getUniformLocation(program, "uniform_camera_far");
 }
+function build(name, node)
+{
+	emit_str = "float " + name + "(float x, float y, float z, float a)\n{\n";
+	emit_counter = 0;
+	var ret = emit(node);
+	emit_str += "\treturn _" + ret + ";\n}\n";
+	return emit_str;
+}
 function engage()
 {
-	var root = parse();
-	if (!root)
+	var curve_xyza = parse();
+	if (!curve_xyza)
 		return;
-	root = reduce(root);
-	emit_str = "float curve_xyza(float x, float y, float z, float a)\n{\n";
-	emit_counter = 0;
-	var ret = emit(root);
-	emit_str += "\treturn _" + ret + ";\n}\n";
-	curve_xyza_str = emit_str;
-	document.getElementById("curve-output").innerHTML = emit_str;
+	curve_xyza = reduce(curve_xyza);
+	var deriv_x = reduce(deriv(curve_xyza, token_x));
+	var deriv_y = reduce(deriv(curve_xyza, token_y));
+	var deriv_z = reduce(deriv(curve_xyza, token_z));
+	curve_xyza_str = build("curve_xyza", curve_xyza);
+	deriv_x_str = build("deriv_x", deriv_x);
+	deriv_y_str = build("deriv_y", deriv_y);
+	deriv_z_str = build("deriv_z", deriv_z);
+	document.getElementById("curve-output").innerHTML = curve_xyza_str + deriv_x_str + deriv_y_str + deriv_z_str;
 	compile();
 	draw();
 }
@@ -1142,7 +1206,7 @@ function toggle(button)
 <canvas id="canvas" style="border: none;" width="512" height="512">
 WebGL not enabled?
 </canvas>
-<p>enter curve to be visualized (curve hardcoded and input not working at the moment):<p>
+<p>enter curve to be visualized:<p>
 <p><input id="curve-input" type="text" size="128" onchange="engage();" value="4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2"></p>
 <pre id="curve-output"></pre>
 <footer><small>
