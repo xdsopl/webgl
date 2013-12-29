@@ -209,12 +209,6 @@ function draw()
 	if (!request)
 		request = window.requestAnimationFrame(update);
 }
-function curve_xyza()
-{
-//	return 4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2;
-	var str = "4.0*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(x)-1.0*sq(y))*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(y)-1.0*sq(z))*(sq(a*(1.0+sqrt(5.0))/2.0)*sq(z)-1.0*sq(x))-1.0*(1.0+2.0*(a*(1.0+sqrt(5.0))/2.0))*sq(sq(x)+sq(y)+sq(z)-1.0*1.0)";
-	return "float curve_xyza(float x, float y, float z, float a) { return " + str + "; }";
-}
 function deriv_x()
 {
 //	return 2*(sqrt(5)+1)^2*a^2*x*((sqrt(5)+1)^2*a^2*y^2/4-z^2)*((sqrt(5)+1)^2*a^2*z^2/4-x^2)-4*((sqrt(5)+1)*a+1)*x*(z^2+y^2+x^2-1)-8*x*((sqrt(5)+1)^2*a^2*x^2/4-y^2)*((sqrt(5)+1)^2*a^2*y^2/4-z^2);
@@ -233,6 +227,7 @@ function deriv_z()
 	var str = "-8.0*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(z)/4.0-sq(x))-4.0*((sqrt(5.0)+1.0)*a+1.0)*z*(sq(z)+sq(y)+sq(x)-1.0)+2.0*sq(sqrt(5.0)+1.0)*sq(a)*(sq(sqrt(5.0)+1.0)*sq(a)*sq(x)/4.0-sq(y))*z*(sq(sqrt(5.0)+1.0)*sq(a)*sq(y)/4.0-sq(z))";
 	return "float deriv_z(float x, float y, float z, float a) { return " + str + "; }";
 }
+var curve_xyza_str;
 var parser_left;
 var parser_right;
 var parser_op;
@@ -406,8 +401,8 @@ function commutative(node, token, func)
 	}
 	if (token == node.left.token && is_num(node.left.left)) {
 		var tmp = node.left;
-		node.left = node.left.left;
-		node.left.left = node.right;
+		node.left = tmp.left;
+		tmp.left = node.right;
 		node.right = tmp;
 		return node;
 	}
@@ -951,18 +946,6 @@ function emit(node)
 			return -1;
 	}
 }
-function engage()
-{
-	var root = parse();
-	if (!root)
-		return;
-	root = reduce(root);
-	emit_str = "float curve_xyza(float x, float y, float z, float a)\n{\n";
-	emit_counter = 0;
-	var ret = emit(root);
-	emit_str += "\treturn _" + ret + ";\n}\n"
-	document.getElementById("curve-output").innerHTML = emit_str;
-}
 function compile()
 {
 	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
@@ -977,7 +960,7 @@ function compile()
 	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
 	var source = "precision highp float;\n";
 	source += document.getElementById("fragment-utils").text;
-	source += curve_xyza();
+	source += curve_xyza_str;
 	source += deriv_x();
 	source += deriv_y();
 	source += deriv_z();
@@ -1014,6 +997,21 @@ function compile()
 	uniform_camera_dir = gl.getUniformLocation(program, "uniform_camera_dir");
 	uniform_camera_near = gl.getUniformLocation(program, "uniform_camera_near");
 	uniform_camera_far = gl.getUniformLocation(program, "uniform_camera_far");
+}
+function engage()
+{
+	var root = parse();
+	if (!root)
+		return;
+	root = reduce(root);
+	emit_str = "float curve_xyza(float x, float y, float z, float a)\n{\n";
+	emit_counter = 0;
+	var ret = emit(root);
+	emit_str += "\treturn _" + ret + ";\n}\n";
+	curve_xyza_str = emit_str;
+	document.getElementById("curve-output").innerHTML = emit_str;
+	compile();
+	draw();
 }
 function v3_normalize(v)
 {
@@ -1104,7 +1102,6 @@ function start()
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
 	engage();
-	compile();
 	draw();
 
 	canvas.addEventListener("mousedown", mouse_down, false);
