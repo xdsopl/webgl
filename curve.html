@@ -526,11 +526,11 @@ function closing_paran(pos)
 	if (parser_stack.empty())
 		return error("opening parenthese missing", pos, pos);
 	parser_stack.pop();
-	if (parser_stack.empty() && parser_stack.top().token != token_paran) {
+	if (!parser_stack.empty() && parser_stack.top().token != token_paran) {
 		var item = parser_stack.pop();
 		parser_right = parser_left;
 		parser_op = item.token;
-		parser_op_begin = item.egin;
+		parser_op_begin = item.begin;
 		parser_op_end = item.end;
 		parser_left = item.node;
 	}
