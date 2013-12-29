@@ -45,13 +45,6 @@ vec4 argb(float r, float g, float b)
 }
 </script>
 
-<script id="fragment-utils" type="x-shader/x-fragment">
-float sq(float x)
-{
-	return x * x;
-}
-</script>
-
 <script id="fragment-shader" type="x-shader/x-fragment">
 varying vec3 varying_pixel_position;
 uniform vec3 uniform_camera_origin;
@@ -1030,7 +1023,6 @@ function compile()
 
 	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
 	var source = "precision highp float;\n";
-	source += document.getElementById("fragment-utils").text;
 	source += curve_xyza_str;
 	source += deriv_x_str;
 	source += deriv_y_str;
