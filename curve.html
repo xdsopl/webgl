@@ -869,6 +869,100 @@ function parse()
 	document.getElementById("curve-output").innerHTML = "";
 	return parser_left;
 }
+var emit_counter;
+var emit_str;
+function emit_num(value)
+{
+	emit_str += "\tfloat _" + emit_counter + " = " + value.toFixed(15) + ";\n";
+	return emit_counter++;
+}
+function emit_var(name)
+{
+	emit_str += "\tfloat _" + emit_counter + " = " + name + ";\n";
+	return emit_counter++;
+}
+function emit_vec(name)
+{
+	emit_str += "\tfloat _" + emit_counter + " = " + name + ";\n";
+	return emit_counter++;
+}
+function emit_mul(left, right)
+{
+	emit_str += "\tfloat _" + emit_counter + " = _" + left + " * _" + right + ";\n";
+	return emit_counter++;
+}
+function emit_div(left, right)
+{
+	emit_str += "\tfloat _" + emit_counter + " = _" + left + " / _" + right + ";\n";
+	return emit_counter++;
+}
+function emit_add(left, right)
+{
+	emit_str += "\tfloat _" + emit_counter + " = _" + left + " + _" + right + ";\n";
+	return emit_counter++;
+}
+function emit_sub(left, right)
+{
+	emit_str += "\tfloat _" + emit_counter + " = _" + left + " - _" + right + ";\n";
+	return emit_counter++;
+}
+function emit_neg(right)
+{
+	emit_str += "\tfloat _" + emit_counter + " = - _" + right + ";\n";
+	return emit_counter++;
+}
+function emit_pow(base, exp)
+{
+	if (0 == exp)
+		return emit_num(1);
+	else if (1 == exp)
+		return base;
+	else if (exp & 1)
+		return emit_mul(base, emit_pow(emit_mul(base, base), (exp - 1) / 2));
+	else
+		return emit_pow(emit_mul(base, base), exp / 2);
+}
+function emit(node)
+{
+	switch (node.token) {
+		case token_x:
+			return emit_vec("x");
+		case token_y:
+			return emit_vec("y");
+		case token_z:
+			return emit_vec("z");
+		case token_a:
+			return emit_var("a");
+		case token_num:
+			return emit_num(node.value);
+		case token_pow:
+			return emit_pow(emit(node.left), node.value);
+		case token_mul:
+			return emit_mul(emit(node.left), emit(node.right));
+		case token_div:
+			return emit_div(emit(node.left), emit(node.right));
+		case token_add:
+			return emit_add(emit(node.left), emit(node.right));
+		case token_sub:
+			return emit_sub(emit(node.left), emit(node.right));
+		case token_neg:
+			return emit_neg(emit(node.right));
+		default:
+			return -1;
+	}
+}
+function engage()
+{
+	var root = parse();
+	if (!root)
+		return;
+	root = reduce(root);
+	emit_str = "float curve_xyza(float x, float y, float z, float a)\n{\n";
+	emit_counter = 0;
+	var ret = emit(root);
+	emit_str += "\treturn _" + ret + ";\n}\n"
+	document.getElementById("curve-output").innerHTML = emit_str;
+}
 function compile()
 {
 	var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
@@ -1009,7 +1103,7 @@ function start()
 	var vertices = [ 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0 ];
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-	parse();
+	engage();
 	compile();
 	draw();
 
@@ -1031,12 +1125,12 @@ function toggle(button)
 
 <body onload="start();" style="color: silver; background-color: black">
 <p>toggle srgb correction: <button id="srgb-toggle" onclick="toggle(this);">disable</button></p>
-<p>enter curve to be visualized (curve hardcoded and input not working at the moment):<p>
-<p><input id="curve-input" type="text" size="128" onchange="parse();" value="4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2"></p>
-<pre id="curve-output"></pre>
 <canvas id="canvas" style="border: none;" width="512" height="512">
 WebGL not enabled?
 </canvas>
+<p>enter curve to be visualized (curve hardcoded and input not working at the moment):<p>
+<p><input id="curve-input" type="text" size="128" onchange="engage();" value="4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2"></p>
+<pre id="curve-output"></pre>
 <footer><small>
 curve.html - visualizing the zero set of a curve using GLSL in WebGL<br />
 Written in 2013 by &lt;Ahmet Inan&gt; &lt;xdsopl@googlemail.com&gt;<br />
