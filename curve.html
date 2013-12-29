@@ -236,7 +236,37 @@ function deriv_z()
 var parser_left;
 var parser_right;
 var parser_op;
+var parser_op_begin;
+var parser_op_end;
 var parser_str;
+var parser_stack;
+function stack()
+{
+	this.items = new Array();
+	this.empty = function()
+	{
+		return 0 == this.items.length;
+	}
+	this.top = function()
+	{
+		return this.items[this.items.length - 1];
+	}
+	this.pop = function()
+	{
+		return this.items.pop();
+	}
+	this.push = function(item)
+	{
+		this.items.push(item);
+	}
+}
+function stack_item(node, token, begin, end)
+{
+	this.node = node;
+	this.token = token;
+	this.begin = begin;
+	this.end = end;
+}
 function error(msg, begin, end)
 {
 	var tmp = parser_str + "\n";
@@ -407,6 +437,105 @@ function operand(node)
 	}
 	return true;
 }
+function binary_operator(token, begin, end)
+{
+	if (parser_left && !parser_op) {
+		parser_op = token;
+		parser_op_begin = begin;
+		parser_op_end = end;
+	} else if (parser_op && parser_right) {
+		if (token_prio(parser_op) >= token_prio(token)) {
+			parser_left = handle_node(parser_left, parser_op, parser_right, parser_op_begin, parser_op_end);
+			if (!parser_left)
+				return false;
+			parser_op = token;
+			parser_op_begin = begin;
+			parser_op_end = end;
+			parser_right = 0;
+		} else {
+			parser_stack.push(new stack_item(parser_left, parser_op, parser_op_begin, parser_op_end));
+			parser_left = parser_right;
+			parser_op = token;
+			parser_op_begin = begin;
+			parser_op_end = end;
+			parser_right = 0;
+			return true;
+		}
+	} else {
+		return error("syntax error", begin, end);
+	}
+	while (!parser_stack.empty() && token_prio(parser_stack.top().token) >= token_prio(parser_op)) {
+		var item = parser_stack.pop();
+		parser_left = handle_node(item.node, item.token, parser_left, item.begin, item.end);
+		if (!parser_left)
+			return false;
+	}
+	return true;
+}
+function unary_operator(token, begin, end)
+{
+	if (!parser_left && !parser_op) {
+		parser_op = token;
+		parser_op_begin = begin;
+		parser_op_end = end;
+		return true;
+	} else if (parser_op && !parser_right) {
+		parser_stack.push(new stack_item(parser_left, parser_op, parser_op_begin, parser_op_end));
+		parser_left = 0;
+		parser_op = token;
+		parser_op_begin = begin;
+		parser_op_end = end;
+		parser_right = 0;
+		return true;
+	} else {
+		return error("syntax error", begin, end);
+	}
+}
+function opening_paran(pos)
+{
+	if (!parser_left && !parser_op) {
+		parser_stack.push(new stack_item(0, token_paran, pos, pos));
+	} else if (parser_op && !parser_right) {
+		parser_stack.push(new stack_item(parser_left, parser_op, parser_op_begin, parser_op_end));
+		parser_stack.push(new stack_item(0, token_paran, pos, pos));
+		parser_left = 0;
+		parser_op = 0;
+		parser_right = 0;
+	} else {
+		return error("syntax error", pos, pos);
+	}
+	return true;
+}
+function closing_paran(pos)
+{
+	if (parser_op && parser_right) {
+		parser_left = handle_node(parser_left, parser_op, parser_right, parser_op_begin, parser_op_end);
+		if (!parser_left)
+			return false;
+		parser_op = 0;
+		parser_right = 0;
+	} else if (!parser_left) {
+		return error("syntax error", pos, pos);
+	}
+	while (!parser_stack.empty() && parser_stack.top().token != token_paran) {
+		var item = parser_stack.pop();
+		parser_left = handle_node(item.node, item.token, parser_left, item.begin, item.end);
+		if (!parser_left)
+			return false;
+	}
+	if (parser_stack.empty())
+		return error("opening parenthese missing", pos, pos);
+	parser_stack.pop();
+	if (parser_stack.empty() && parser_stack.top().token != token_paran) {
+		var item = parser_stack.pop();
+		parser_right = parser_left;
+		parser_op = item.token;
+		parser_op_begin = item.egin;
+		parser_op_end = item.end;
+		parser_left = item.node;
+	}
+	return true;
+}
 function parse()
 {
 	var str = document.getElementById("curve-input").value;
@@ -414,6 +543,9 @@ function parse()
 	parser_left = 0;
 	parser_right = 0;
 	parser_op = 0;
+	parser_op_begin = 0;
+	parser_op_end = 0;
+	parser_stack = new stack();
 	for (var pos = 0; pos < str.length; pos++) {
 		switch (str[pos]) {
 			case ' ':
