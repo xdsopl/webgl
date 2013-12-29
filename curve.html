@@ -591,12 +591,18 @@ function parse()
 			case 'c':
 				if ("cos" != str.substr(pos, 3))
 					return error("unkown", pos, pos);
+				if (!unary_operator(token_cos, pos, pos+2))
+					return false;
 				pos += 2;
 				break;
 			case 's':
 				if ("sqrt" == str.substr(pos, 4)) {
+					if (!unary_operator(token_sqrt, pos, pos+3))
+						return false;
 					pos += 3;
 				} else if ("sin" == str.substr(pos, 3)) {
+					if (!unary_operator(token_sin, pos, pos+2))
+						return false;
 					pos += 2;
 				} else {
 					return error("unkown", pos, pos);
@@ -610,24 +616,60 @@ function parse()
 				pos += 1;
 				break;
 			case '^':
+				if (!binary_operator(token_pow, pos, pos))
+					return false;
 				break;
 			case '*':
+				if (!binary_operator(token_mul, pos, pos))
+					return false;
 				break;
 			case '/':
+				if (!binary_operator(token_div, pos, pos))
+					return false;
 				break;
 			case '+':
+				if (!binary_operator(token_add, pos, pos))
+					return false;
 				break;
 			case '-':
+				if (parser_left || parser_op) {
+					if (!binary_operator(token_sub, pos, pos))
+						return false;
+				} else {
+					if (!unary_operator(token_neg, pos, pos))
+						return false;
+				}
 				break;
 			case '(':
+				if (!opening_paran(pos))
+					return false;
 				break;
 			case ')':
+				if (!closing_paran(pos))
+					return false;
 				break;
 			default:
 				return error("unkown", pos, pos);
 		}
 	}
+	if (parser_op && parser_right) {
+		parser_left = handle_node(parser_left, parser_op, parser_right, parser_op_begin, parser_op_end);
+		if (!parser_left)
+			return false;
+	} else if (parser_op || parser_right) {
+		return error("incomplete expression", str.length-1, str.length-1);
+	}
+	while (!parser_stack.empty() && parser_stack.top().token != token_paran) {
+		var item = parser_stack.pop();
+		parser_left = handle_node(item.node, item.token, parser_left, item.begin, item.end);
+		if (!parser_left)
+			return false;
+	}
+	if (!parser_stack.empty())
+		return error("closing parenthese missing", str.length-1, str.length-1);
+
 	document.getElementById("curve-output").innerHTML = "";
+	return parser_left;
 }
 function compile()
 {
