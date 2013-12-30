@@ -694,7 +694,7 @@ function handle_node(left, token, right, begin, end)
 		case token_cos:
 			return handle_cos(right, begin);
 		default:
-			return new token_span(left, token, right, begin, end);
+			return new token_span(left, token, right, left ? left.begin : begin, right ? right.end : end);
 	}
 }
 function operand(node)
