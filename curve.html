@@ -10,13 +10,14 @@ uniform vec3 uniform_camera_up;
 uniform vec3 uniform_camera_right;
 uniform vec3 uniform_camera_dir;
 uniform float uniform_camera_near;
+uniform float uniform_zoom;
 varying vec3 varying_pixel_position;
 void main()
 {
 	gl_Position = vec4(attribute_vertex_position, 0.0, 1.0);
 	varying_pixel_position =
-		attribute_vertex_position[0] * uniform_camera_right +
-		attribute_vertex_position[1] * uniform_camera_up +
+		attribute_vertex_position[0] / uniform_zoom * uniform_camera_right +
+		attribute_vertex_position[1] / uniform_zoom * uniform_camera_up +
 		uniform_camera_near * uniform_camera_dir;
 }
 </script>
@@ -51,6 +52,7 @@ uniform vec3 uniform_camera_origin;
 uniform float uniform_camera_near;
 uniform float uniform_camera_far;
 uniform float uniform_a;
+uniform float uniform_radius;
 struct struct_interval
 {
 	float min, max;
@@ -157,7 +159,7 @@ void main()
 	ray.near = uniform_camera_near;
 	ray.far = uniform_camera_far;
 	struct_interval l;
-	if (!sphere_ray(l, struct_sphere(vec3(0.0, 0.0, 0.0), 3.0), ray))
+	if (!sphere_ray(l, struct_sphere(vec3(0.0, 0.0, 0.0), uniform_radius), ray))
 		discard;
 	struct_surface surface;
 	surface.t = localize(l, ray, a);
@@ -176,14 +178,14 @@ var camera = {
 	up : [ 0.0, 1.0, 0.0 ],
 	right : [ 1.0, 0.0, 0.0 ],
 	dir : [ 0.0, 0.0, -1.0 ],
-	origin : [ 0.0, 0.0, 20.0 ],
+	origin : [ 0.0, 0.0, 10.0 ],
 	near: 5.0,
 	far : 100.0
 };
 var uniform_camera_up, uniform_camera_right, uniform_camera_origin;
 var uniform_camera_dir, uniform_camera_near, uniform_camera_far;
-var value_a = 1.0;
-var uniform_a;
+var value_a, radius, zoom;
+var uniform_a, uniform_radius, uniform_zoom;
 var last_x, last_y;
 var request = 0;
 function update()
@@ -196,6 +198,8 @@ function update()
 	gl.uniform1f(uniform_camera_near, camera.near);
 	gl.uniform1f(uniform_camera_far, camera.far);
 	gl.uniform1f(uniform_a, value_a);
+	gl.uniform1f(uniform_radius, radius);
+	gl.uniform1f(uniform_zoom, zoom);
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	gl.vertexAttribPointer(attribute_vertex_position, 2, gl.FLOAT, false, 0, 0);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -1075,6 +1079,8 @@ function compile()
 	uniform_camera_near = gl.getUniformLocation(program, "uniform_camera_near");
 	uniform_camera_far = gl.getUniformLocation(program, "uniform_camera_far");
 	uniform_a = gl.getUniformLocation(program, "uniform_a");
+	uniform_radius = gl.getUniformLocation(program, "uniform_radius");
+	uniform_zoom = gl.getUniformLocation(program, "uniform_zoom");
 }
 function build(name, node)
 {
@@ -1170,6 +1176,64 @@ function mouse_up(event)
 {
 	document.removeEventListener("mousemove", mouse_move, false);
 }
+function set_a(a)
+{
+	value_a = a;
+	document.getElementById("a-output").innerHTML = "a=" + a;
+	document.getElementById("a-input").value = a;
+}
+function set_radius(r)
+{
+	radius = r;
+	document.getElementById("radius-output").innerHTML = "radius=" + r;
+	document.getElementById("radius-input").value = r;
+}
+function set_zoom(z)
+{
+	zoom = z;
+	document.getElementById("zoom-output").innerHTML = "zoom=" + z;
+	document.getElementById("zoom-input").value = z;
+}
+function set_curve(a, z, r, str)
+{
+	set_a(a);
+	set_radius(r);
+	set_zoom(z);
+	document.getElementById("curve-input").value = str;
+	engage();
+}
+function heart()
+{
+	set_curve(1, 1, 1.5, "(2*x^2 + y^2 + z^2 - 1)^3 - x^2*z^3/10 - y^2*z^3");
+}
+function torus()
+{
+	set_curve(1, 0.4, 3, "(x^2 + y^2 + z^2 + 2)^2 - 12*(x^2 + y^2)");
+}
+function cross()
+{
+	set_curve(1, 1, 1, "x*y*z");
+}
+function paraboloid()
+{
+	set_curve(1, 0.5, 3, "x^2 + y^2 + z - 1");
+}
+function cone()
+{
+	set_curve(1, 1, 1, "x^2 + y^2 - z^2");
+}
+function cylinder()
+{
+	set_curve(1, 0.5, 2, "x^2 + y^2 - 1");
+}
+function chmutov()
+{
+	set_curve(1, 0.8, 1.8, "128*x^8-256*x^6+160*x^4-32*x^2+128*y^8-256*y^6+160*y^4-32*y^2+128*z^8-256*z^6+160*z^4-32*z^2+4*a");
+}
+function sextic()
+{
+	set_curve(1, 0.4, 3, "4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2");
+}
 function start()
 {
 	canvas = document.getElementById("canvas");
@@ -1189,7 +1253,7 @@ function start()
 	var vertices = [ 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0 ];
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-	engage();
+	sextic();
 
 	canvas.addEventListener("mousedown", mouse_down, false);
 	document.addEventListener("mouseup", mouse_up, false);
@@ -1204,64 +1268,20 @@ function toggle(button)
 	compile();
 	draw();
 }
-function set_a(a)
-{
-	value_a = a;
-	document.getElementById("a-output").innerHTML = "a=" + a;
-	draw();
-}
-function heart()
-{
-	document.getElementById("curve-input").value = "(2*x^2 + y^2 + z^2 - 1)^3 - x^2*z^3/10 - y^2*z^3";
-	engage();
-}
-function torus()
-{
-	document.getElementById("curve-input").value = "(x^2 + y^2 + z^2 + 2)^2 - 12*(x^2 + y^2)";
-	engage();
-}
-function cross()
-{
-	document.getElementById("curve-input").value = "x*y*z";
-	engage();
-}
-function paraboloid()
-{
-	document.getElementById("curve-input").value = "x^2 + y^2 + z - 1";
-	engage();
-}
-function cone()
-{
-	document.getElementById("curve-input").value = "x^2 + y^2 - z^2";
-	engage();
-}
-function cylinder()
-{
-	document.getElementById("curve-input").value = "x^2 + y^2 - 1";
-	engage();
-}
-function chmutov()
-{
-	document.getElementById("curve-input").value = "128*x^8-256*x^6+160*x^4-32*x^2+128*y^8-256*y^6+160*y^4-32*y^2+128*z^8-256*z^6+160*z^4-32*z^2+4*a";
-	engage();
-}
-function sextic()
-{
-	document.getElementById("curve-input").value = "4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2";
-	engage();
-}
 </script>
 </head>
 
 <body onload="start();" style="color: silver; background-color: black">
 <p>toggle srgb correction: <button id="srgb-toggle" onclick="toggle(this);">disable</button></p>
 <p><button onclick="heart();">heart</button><button onclick="torus();">torus</button><button onclick="cross();">cross</button><button onclick="paraboloid();">paraboloid</button><button onclick="cone();">cone</button><button onclick="cylinder();">cylinder</button><button onclick="chmutov();">chmutov</button><button onclick="sextic();">sextic</button></p>
-<p><input type="range" onchange="set_a(this.value);" min="0" max="1" step="0.01" value="1"><span id="a-output">a=1</span></p>
+<p><input type="range" id="a-input" onchange="set_a(this.value); draw();" min="0" max="1" step="0.01" value="1"><span id="a-output">a=1</span></p>
+<p><input type="range" id="radius-input" onchange="set_radius(this.value); draw();" min="0.25" max="5" step="0.01" value="1"><span id="radius-output">radius=1</span></p>
+<p><input type="range" id="zoom-input" onchange="set_zoom(this.value); draw();" min="0.25" max="5" step="0.01" value="1"><span id="zoom-output">zoom=1</span></p>
 <canvas id="canvas" style="border: none;" width="512" height="512">
 WebGL not enabled?
 </canvas>
 <p>enter curve to be visualized:<p>
-<p><input id="curve-input" type="text" size="128" onchange="engage();" value="4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2"></p>
+<p><input id="curve-input" type="text" size="128" onchange="engage();" value=""></p>
 <pre id="curve-output"></pre>
 <footer><small>
 curve.html - visualizing the zero set of a curve using GLSL in WebGL<br />
