@@ -46,13 +46,7 @@ vec4 argb(float r, float g, float b)
 }
 </script>
 
-<script id="fragment-shader" type="x-shader/x-fragment">
-varying vec3 varying_pixel_position;
-uniform vec3 uniform_camera_origin;
-uniform float uniform_camera_near;
-uniform float uniform_camera_far;
-uniform float uniform_a;
-uniform float uniform_radius;
+<script id="fragment-structs" type="x-shader/x-fragment">
 struct struct_interval
 {
 	float min, max;
@@ -72,6 +66,42 @@ struct struct_sphere {
 	vec3 c;
 	float r;
 };
+</script>
+
+<script id="red-green-shader" type="x-shader/x-fragment">
+vec4 color(struct_surface surface, struct_ray ray)
+{
+	float v = surface.t ? dot(surface.n, ray.d) : 0.0;
+	return v < 0.0 ? argb(0.0, -v, 0.0) : argb(v, 0.0, 0.0);
+}
+</script>
+
+<script id="boring-shader" type="x-shader/x-fragment">
+vec4 color(struct_surface surface, struct_ray ray)
+{
+	float v = surface.t ? abs(dot(surface.n, ray.d)) : 0.0;
+	return argb(v, v, v);
+}
+</script>
+
+<script id="fancy-shader" type="x-shader/x-fragment">
+vec4 color(struct_surface surface, struct_ray ray)
+{
+	float v = surface.t ? abs(dot(surface.n, ray.d)) : 0.0;
+	float r = v * surface.p.x;
+	float g = v * surface.p.y;
+	float b = v * surface.p.z;
+	return argb(r, g, b);
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+varying vec3 varying_pixel_position;
+uniform vec3 uniform_camera_origin;
+uniform float uniform_camera_near;
+uniform float uniform_camera_far;
+uniform float uniform_a;
+uniform float uniform_radius;
 bool sphere_ray(out struct_interval l, struct_sphere sphere, struct_ray ray)
 {
 	vec3 dst = sphere.c - ray.o;
@@ -84,11 +114,6 @@ bool sphere_ray(out struct_interval l, struct_sphere sphere, struct_ray ray)
 	l.min = max(l0, ray.near);
 	l.max = min(l1, ray.far);
 	return d >= 0.0 && l0 < ray.far && l1 > ray.near;
-}
-vec4 color(struct_surface surface, struct_ray ray)
-{
-	float v = surface.t ? dot(surface.n, ray.d) : 0.0;
-	return v < 0.0 ? argb(0.0, -v, 0.0) : argb(v, 0.0, 0.0);
 }
 float curve(vec3 v, float a)
 {
@@ -174,6 +199,7 @@ void main()
 
 <script type="text/javascript">
 var canvas, gl, attribute_vertex_position, quad_buffer;
+var color_shader;
 var camera = {
 	up : [ 0.0, 1.0, 0.0 ],
 	right : [ 1.0, 0.0, 0.0 ],
@@ -1041,6 +1067,7 @@ function compile()
 
 	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
 	var source = "precision highp float;\n";
+	source += document.getElementById("fragment-structs").text;
 	source += curve_xyza_str;
 	source += deriv_x_str;
 	source += deriv_y_str;
@@ -1049,6 +1076,7 @@ function compile()
 		source += document.getElementById("argb-srgb").text;
 	else
 		source += document.getElementById("argb-linear").text;
+	source += document.getElementById(color_shader).text;
 	source += document.getElementById("fragment-shader").text;
 	gl.shaderSource(fragment_shader, source);
 	gl.compileShader(fragment_shader);
@@ -1253,10 +1281,17 @@ function start()
 	var vertices = [ 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0 ];
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
+	color_shader = "red-green-shader";
 	sextic();
 
 	canvas.addEventListener("mousedown", mouse_down, false);
 	document.addEventListener("mouseup", mouse_up, false);
+}
+function set_shader(str)
+{
+	color_shader = str + "-shader";
+	compile();
+	draw();
 }
 function toggle(button)
 {
@@ -1272,7 +1307,7 @@ function toggle(button)
 </head>
 
 <body onload="start();" style="color: silver; background-color: black">
-<p>toggle srgb correction: <button id="srgb-toggle" onclick="toggle(this);">disable</button></p>
+<p>toggle srgb correction: <button id="srgb-toggle" onclick="toggle(this);">disable</button> choose color shader: <button onclick="set_shader('red-green');">red-green</button><button onclick="set_shader('boring');">boring</button><button onclick="set_shader('fancy');">fancy</button></p>
 <p><button onclick="heart();">heart</button><button onclick="torus();">torus</button><button onclick="cross();">cross</button><button onclick="paraboloid();">paraboloid</button><button onclick="cone();">cone</button><button onclick="cylinder();">cylinder</button><button onclick="chmutov();">chmutov</button><button onclick="sextic();">sextic</button></p>
 <p><input type="range" id="a-input" onchange="set_a(this.value); draw();" min="0" max="1" step="0.01" value="1"><span id="a-output">a=1</span></p>
 <p><input type="range" id="radius-input" onchange="set_radius(this.value); draw();" min="0.25" max="5" step="0.01" value="1"><span id="radius-output">radius=1</span></p>
