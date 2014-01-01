@@ -1312,7 +1312,7 @@ function toggle(button)
 <p><input type="range" id="a-input" onchange="set_a(this.value); draw();" min="0" max="1" step="0.01" value="1"><span id="a-output">a=1</span></p>
 <p><input type="range" id="radius-input" onchange="set_radius(this.value); draw();" min="0.25" max="5" step="0.01" value="1"><span id="radius-output">radius=1</span></p>
 <p><input type="range" id="zoom-input" onchange="set_zoom(this.value); draw();" min="0.25" max="5" step="0.01" value="1"><span id="zoom-output">zoom=1</span></p>
-<canvas id="canvas" style="border: none;" width="512" height="512">
+<canvas id="canvas" style="border: none; cursor: default;" width="512" height="512">
 WebGL not enabled?
 </canvas>
 <p>enter curve to be visualized:<p>
