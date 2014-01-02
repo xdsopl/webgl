@@ -135,6 +135,7 @@ void main()
 		ratio -= 0.3;
 		ray.d = reflect(ray.d, surface.n);
 		ray.o = surface.p;
+		ray.near = 0.001;
 		surface.l = ray.far;
 		surface.t = false;
 	}
