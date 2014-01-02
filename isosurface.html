@@ -23,11 +23,11 @@ void main()
 </script>
 
 <script id="argb-srgb" type="x-shader/x-fragment">
-vec4 argb(float r, float g, float b)
+vec4 argb(vec3 c)
 {
-	r = clamp(r, 0.0, 1.0);
-	g = clamp(g, 0.0, 1.0);
-	b = clamp(b, 0.0, 1.0);
+	float r = clamp(c.r, 0.0, 1.0);
+	float g = clamp(c.g, 0.0, 1.0);
+	float b = clamp(c.b, 0.0, 1.0);
 	float K0 = 0.03928;
 	float a = 0.055;
 	float phi = 12.92;
@@ -40,9 +40,9 @@ vec4 argb(float r, float g, float b)
 </script>
 
 <script id="argb-linear" type="x-shader/x-fragment">
-vec4 argb(float r, float g, float b)
+vec4 argb(vec3 c)
 {
-	return vec4(r, g, b, 1.0);
+	return vec4(c, 1.0);
 }
 </script>
 
@@ -69,29 +69,24 @@ struct struct_sphere {
 </script>
 
 <script id="red-green-shader" type="x-shader/x-fragment">
-vec4 color(struct_surface surface, struct_ray ray)
+vec3 color(struct_surface surface, struct_ray ray)
 {
 	float v = surface.t ? dot(surface.n, ray.d) : 0.0;
-	return v < 0.0 ? argb(0.0, -v, 0.0) : argb(v, 0.0, 0.0);
+	return v < 0.0 ? vec3(0.0, -v, 0.0) : vec3(v, 0.0, 0.0);
 }
 </script>
 
 <script id="boring-shader" type="x-shader/x-fragment">
-vec4 color(struct_surface surface, struct_ray ray)
+vec3 color(struct_surface surface, struct_ray ray)
 {
-	float v = surface.t ? abs(dot(surface.n, ray.d)) : 0.0;
-	return argb(v, v, v);
+	return vec3(surface.t ? abs(dot(surface.n, ray.d)) : 0.0);
 }
 </script>
 
 <script id="fancy-shader" type="x-shader/x-fragment">
-vec4 color(struct_surface surface, struct_ray ray)
+vec3 color(struct_surface surface, struct_ray ray)
 {
-	float v = surface.t ? abs(dot(surface.n, ray.d)) : 0.0;
-	float r = v * surface.p.x;
-	float g = v * surface.p.y;
-	float b = v * surface.p.z;
-	return argb(r, g, b);
+	return (surface.t ? abs(dot(surface.n, ray.d)) : 0.0) * surface.p;
 }
 </script>
 
@@ -193,7 +188,7 @@ void main()
 	surface.l = newton(bisect(l, ray, a), ray, a);
 	surface.p = surface.l * ray.d + ray.o;
 	surface.n = normalize(gradient(surface.p, a));
-	gl_FragColor = color(surface, ray);
+	gl_FragColor = argb(color(surface, ray));
 }
 </script>
 
