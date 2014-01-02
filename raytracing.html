@@ -85,7 +85,7 @@ void aabb_ray(inout struct_surface surface, struct_aabb box, struct_ray ray)
 	tmp.l = l0 < 0.0 ? l1 : l0;
 	tmp.n = l0 < 0.0 ? n1 : n0;
 	tmp.p = tmp.l * ray.d + ray.o;
-	tmp.t = l0 < l1 && 0.0 <= tmp.l && tmp.l < surface.l;
+	tmp.t = l0 < l1 && ray.near <= tmp.l && tmp.l < surface.l;
 	surface = tmp.t ? tmp : surface;
 }
 void sphere_ray(inout struct_surface surface, struct_sphere sphere, struct_ray ray)
