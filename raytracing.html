@@ -121,7 +121,7 @@ void main()
 	surface.t = false;
 	vec3 rgb = vec3(0.0);
 	float ratio = 1.0;
-	for (int i = 0; i < 2; i++) {
+	for (int i = 0; i < 4; i++) {
 		aabb_ray(surface, struct_aabb(vec3(0.5, 0.5, 0.5), vec3(0.8, 0.8, 0.8)), ray);
 		aabb_ray(surface, struct_aabb(vec3(0.3, 0.1, 0.6), vec3(0.4, 0.6, 0.7)), ray);
 		aabb_ray(surface, struct_aabb(vec3(-0.9, -0.9, -0.9), vec3(-0.8, 0.9, 0.9)), ray);
@@ -132,7 +132,7 @@ void main()
 		if (!surface.t)
 			break;
 		rgb = (1.0 - ratio) * rgb + ratio * color(surface, ray);
-		ratio -= 0.3;
+		ratio *= 0.7;
 		ray.d = reflect(ray.d, surface.n);
 		ray.o = surface.p;
 		ray.near = 0.001;
