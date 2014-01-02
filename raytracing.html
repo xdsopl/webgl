@@ -82,8 +82,8 @@ void aabb_ray(inout struct_surface surface, struct_aabb box, struct_ray ray)
 	vec3 n0 = mi.x > mi.y ? (mi.x > mi.z ? nx : nz) : (mi.y > mi.z ? ny : nz);
 	vec3 n1 = ma.x < ma.y ? (ma.x < ma.z ? nx : nz) : (ma.y < ma.z ? ny : nz);
 	struct_surface tmp;
-	tmp.l = l0 < 0.0 ? l1 : l0;
-	tmp.n = l0 < 0.0 ? n1 : n0;
+	tmp.l = l0 < ray.near ? l1 : l0;
+	tmp.n = l0 < ray.near ? n1 : n0;
 	tmp.p = tmp.l * ray.d + ray.o;
 	tmp.t = l0 < l1 && ray.near <= tmp.l && tmp.l < surface.l;
 	surface = tmp.t ? tmp : surface;
