@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Curve</title>
+<title>Isosurface</title>
 
 <script id="vertex-shader" type="x-shader/x-vertex">
 attribute vec2 attribute_vertex_position;
@@ -115,9 +115,9 @@ bool sphere_ray(out struct_interval l, struct_sphere sphere, struct_ray ray)
 	l.max = min(l1, ray.far);
 	return d >= 0.0 && l0 < ray.far && l1 > ray.near;
 }
-float curve(vec3 v, float a)
+float func(vec3 v, float a)
 {
-	return curve_xyza(v.x, v.y, v.z, a);
+	return func_xyza(v.x, v.y, v.z, a);
 }
 vec3 gradient(vec3 v, float a)
 {
@@ -131,11 +131,11 @@ float bisect(struct_interval l, struct_ray ray, float a)
 {
 	struct_interval k = l;
 	vec3 p0 = k.min * ray.d + ray.o;
-	float v0 = curve(p0, a);
+	float v0 = func(p0, a);
 	for (int i = 0; i < 20; i++) {
 		float x = 0.5 * (k.min + k.max);
 		vec3 p1 = x * ray.d + ray.o;
-		bool test = sign_change(v0, curve(p1, a));
+		bool test = sign_change(v0, func(p1, a));
 		k.min = test ? k.min : x;
 		k.max = test ? x : k.max;
 	}
@@ -145,7 +145,7 @@ float newton(float n, struct_ray ray, float a)
 {
 	for (int i = 0; i < 20; i++) {
 		vec3 p = n * ray.d + ray.o;
-		n -= curve(p, a) / dot(ray.d, gradient(p, a));
+		n -= func(p, a) / dot(ray.d, gradient(p, a));
 	}
 	return n;
 }
@@ -155,7 +155,7 @@ bool localize(inout struct_interval l, struct_ray ray, float a)
 	float fine = 0.001;
 	struct_interval k = l;
 	vec3 p0 = k.min * ray.d + ray.o;
-	float v0 = curve(p0, a);
+	float v0 = func(p0, a);
 	bool test = false;
 //	while (test || k.min >= l.max) {
 	for (int i = 0; i < 150; i++) {
@@ -163,7 +163,7 @@ bool localize(inout struct_interval l, struct_ray ray, float a)
 		float step = clamp(abs(x), fine, coarse);
 		k.max = test ? k.max : k.min + step;
 		vec3 p1 = k.max * ray.d + ray.o;
-		float v1 = curve(p1, a);
+		float v1 = func(p1, a);
 		test = test || k.max < l.max && sign_change(v0, v1);
 		k.min = test ? k.min : k.max;
 		v0 = v1;
@@ -236,7 +236,7 @@ function draw()
 	if (!request)
 		request = window.requestAnimationFrame(update);
 }
-var curve_xyza_str;
+var func_xyza_str;
 var deriv_x, deriv_y, deriv_z;
 var parser_left;
 var parser_right;
@@ -280,7 +280,7 @@ function error(msg, begin, end)
 	for (var i = begin; i <= end; i++)
 		tmp += "~";
 	tmp += "\n" + msg;
-	document.getElementById("curve-output").innerHTML = tmp;
+	document.getElementById("func-output").innerHTML = tmp;
 	return false;
 }
 function a2f(s)
@@ -839,7 +839,7 @@ function closing_paran(pos)
 }
 function parse()
 {
-	var str = document.getElementById("curve-input").value;
+	var str = document.getElementById("func-input").value;
 	parser_str = str;
 	parser_left = 0;
 	parser_right = 0;
@@ -969,7 +969,7 @@ function parse()
 	if (!parser_stack.empty())
 		return error("closing parenthese missing", str.length-1, str.length-1);
 
-	document.getElementById("curve-output").innerHTML = "";
+	document.getElementById("func-output").innerHTML = "";
 	return parser_left;
 }
 var emit_counter;
@@ -1068,7 +1068,7 @@ function compile()
 	var fragment_shader = gl.createShader(gl.FRAGMENT_SHADER);
 	var source = "precision highp float;\n";
 	source += document.getElementById("fragment-structs").text;
-	source += curve_xyza_str;
+	source += func_xyza_str;
 	source += deriv_x_str;
 	source += deriv_y_str;
 	source += deriv_z_str;
@@ -1120,18 +1120,18 @@ function build(name, node)
 }
 function engage()
 {
-	var curve_xyza = parse();
-	if (!curve_xyza)
+	var func_xyza = parse();
+	if (!func_xyza)
 		return;
-	curve_xyza = reduce(curve_xyza);
-	var deriv_x = reduce(deriv(curve_xyza, token_x));
-	var deriv_y = reduce(deriv(curve_xyza, token_y));
-	var deriv_z = reduce(deriv(curve_xyza, token_z));
-	curve_xyza_str = build("curve_xyza", curve_xyza);
+	func_xyza = reduce(func_xyza);
+	var deriv_x = reduce(deriv(func_xyza, token_x));
+	var deriv_y = reduce(deriv(func_xyza, token_y));
+	var deriv_z = reduce(deriv(func_xyza, token_z));
+	func_xyza_str = build("func_xyza", func_xyza);
 	deriv_x_str = build("deriv_x", deriv_x);
 	deriv_y_str = build("deriv_y", deriv_y);
 	deriv_z_str = build("deriv_z", deriv_z);
-	document.getElementById("curve-output").innerHTML = "";//curve_xyza_str + deriv_x_str + deriv_y_str + deriv_z_str;
+	document.getElementById("func-output").innerHTML = "";//func_xyza_str + deriv_x_str + deriv_y_str + deriv_z_str;
 	compile();
 	draw();
 }
@@ -1222,45 +1222,45 @@ function set_zoom(z)
 	document.getElementById("zoom-output").innerHTML = "zoom=" + z;
 	document.getElementById("zoom-input").value = z;
 }
-function set_curve(a, z, r, str)
+function set_func(a, z, r, str)
 {
 	set_a(a);
 	set_radius(r);
 	set_zoom(z);
-	document.getElementById("curve-input").value = str;
+	document.getElementById("func-input").value = str;
 	engage();
 }
 function heart()
 {
-	set_curve(1, 1, 1.5, "(2*x^2 + y^2 + z^2 - 1)^3 - x^2*z^3/10 - y^2*z^3");
+	set_func(1, 1, 1.5, "(2*x^2 + y^2 + z^2 - 1)^3 - x^2*z^3/10 - y^2*z^3");
 }
 function torus()
 {
-	set_curve(1, 0.4, 3, "(x^2 + y^2 + z^2 + 2)^2 - 12*(x^2 + y^2)");
+	set_func(1, 0.4, 3, "(x^2 + y^2 + z^2 + 2)^2 - 12*(x^2 + y^2)");
 }
 function cross()
 {
-	set_curve(1, 1, 1, "x*y*z");
+	set_func(1, 1, 1, "x*y*z");
 }
 function paraboloid()
 {
-	set_curve(1, 0.5, 3, "x^2 + y^2 + z - 1");
+	set_func(1, 0.5, 3, "x^2 + y^2 + z - 1");
 }
 function cone()
 {
-	set_curve(1, 1, 1, "x^2 + y^2 - z^2");
+	set_func(1, 1, 1, "x^2 + y^2 - z^2");
 }
 function cylinder()
 {
-	set_curve(1, 0.5, 2, "x^2 + y^2 - 1");
+	set_func(1, 0.5, 2, "x^2 + y^2 - 1");
 }
 function chmutov()
 {
-	set_curve(1, 0.8, 1.8, "128*x^8-256*x^6+160*x^4-32*x^2+128*y^8-256*y^6+160*y^4-32*y^2+128*z^8-256*z^6+160*z^4-32*z^2+4*a");
+	set_func(1, 0.8, 1.8, "128*x^8-256*x^6+160*x^4-32*x^2+128*y^8-256*y^6+160*y^4-32*y^2+128*z^8-256*z^6+160*z^4-32*z^2+4*a");
 }
 function sextic()
 {
-	set_curve(1, 0.4, 3, "4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2");
+	set_func(1, 0.4, 3, "4*((a*(1+sqrt(5))/2)^2*x^2-1*y^2)*((a*(1+sqrt(5))/2)^2*y^2-1*z^2)*((a*(1+sqrt(5))/2)^2*z^2-1*x^2)-1*(1+2*(a*(1+sqrt(5))/2))*(x^2+y^2+z^2-1*1)^2");
 }
 function start()
 {
@@ -1315,11 +1315,11 @@ function toggle(button)
 <canvas id="canvas" style="border: none; cursor: default;" width="512" height="512">
 WebGL not enabled?
 </canvas>
-<p>enter curve to be visualized:<p>
-<p><input id="curve-input" type="text" size="128" onchange="engage();" value=""></p>
-<pre id="curve-output"></pre>
+<p>enter function "f(x, y, z, a)" for the visualization of its isosurface "f(x, y, z, a) = 0":<p>
+<p><input id="func-input" type="text" size="128" onchange="engage();" value=""></p>
+<pre id="func-output"></pre>
 <footer><small>
-curve.html - visualizing the zero set of a curve using GLSL in WebGL<br />
+isosurface.html - visualizing the zero set of a function using GLSL in WebGL<br />
 Written in 2013 by &lt;Ahmet Inan&gt; &lt;xdsopl@googlemail.com&gt;<br />
 To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide. This software is distributed without any warranty.<br />
 You should have received a copy of the CC0 Public Domain Dedication along with this software. If not, see <a href="http://creativecommons.org/publicdomain/zero/1.0/">http://creativecommons.org/publicdomain/zero/1.0/</a>.
