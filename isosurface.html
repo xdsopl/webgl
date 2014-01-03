@@ -23,19 +23,27 @@ void main()
 </script>
 
 <script id="argb-srgb" type="x-shader/x-fragment">
-vec4 argb(vec3 c)
+float srgb(float v)
 {
-	float r = clamp(c.r, 0.0, 1.0);
-	float g = clamp(c.g, 0.0, 1.0);
-	float b = clamp(c.b, 0.0, 1.0);
+	v = clamp(v, 0.0, 1.0);
 	float K0 = 0.03928;
 	float a = 0.055;
 	float phi = 12.92;
 	float gamma = 2.4;
-	r = r <= K0 / phi ? r * phi : (1.0 + a) * pow(r, 1.0 / gamma) - a;
-	g = g <= K0 / phi ? g * phi : (1.0 + a) * pow(g, 1.0 / gamma) - a;
-	b = b <= K0 / phi ? b * phi : (1.0 + a) * pow(b, 1.0 / gamma) - a;
-	return vec4(r, g, b, 1.0);
+	return v <= K0 / phi ? v * phi : (1.0 + a) * pow(v, 1.0 / gamma) - a;
+}
+float linear(float v)
+{
+	v = clamp(v, 0.0, 1.0);
+	float K0 = 0.03928;
+	float a = 0.055;
+	float phi = 12.92;
+	float gamma = 2.4;
+	return v <= K0 ? v / phi : pow((v + a) / (1.0 + a), gamma);
+}
+vec4 argb(vec3 c)
+{
+	return vec4(srgb(c.r), srgb(c.g), srgb(c.b), 1.0);
 }
 </script>
 
