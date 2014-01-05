@@ -5,9 +5,15 @@ You should have received a copy of the CC0 Public Domain Dedication along with t
 
 just open the *.html files in your WebGL capable Browser!
 
+for the loading of images to work, you must put the images and html files on a webserver, as opening file:// from javascript is prohibited.
+
 examples:
 https://rawgithub.com/xdsopl/webgl/master/mandelbrot.html
 https://rawgithub.com/xdsopl/webgl/master/srgb.html
 https://rawgithub.com/xdsopl/webgl/master/raytracing.html
 https://rawgithub.com/xdsopl/webgl/master/isosurface.html
+
+panorama.jpg is downsampled using my "panorama" tool.
+got original panorama image (Creative Commons Attribution 3.0 Unported License) from here:
+http://www.hdri-hub.com/hdrishop/freesamples/freehdri/item/116-hdr-040-field-free
 
