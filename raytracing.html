@@ -44,12 +44,21 @@ vec4 argb(vec3 c)
 {
 	return vec4(srgb(c.r), srgb(c.g), srgb(c.b), 1.0);
 }
+vec3 texture(sampler2D sampler, vec2 uv)
+{
+	vec3 s = texture2D(sampler, uv).rgb;
+	return vec3(linear(s.r), linear(s.g), linear(s.b));
+}
 </script>
 
 <script id="argb-linear" type="x-shader/x-fragment">
 vec4 argb(vec3 c)
 {
 	return vec4(c, 1.0);
+}
+vec3 texture(sampler2D sampler, vec2 uv)
+{
+	return texture2D(sampler, uv).rgb;
 }
 </script>
 
@@ -58,6 +67,8 @@ varying vec3 varying_pixel_position;
 uniform vec3 uniform_camera_origin;
 uniform float uniform_camera_near;
 uniform float uniform_camera_far;
+uniform sampler2D uniform_panorama;
+const float M_PI = 3.14159265358979323846;
 struct struct_surface
 {
 	vec3 p, n;
@@ -128,6 +139,10 @@ bool trace(inout struct_surface surface, struct_ray ray)
 	sphere_ray(surface, struct_sphere(vec3(0.3, 0.5, -0.7), 0.2), ray);
 	return surface.t;
 }
+vec2 uv_sphere(vec3 v)
+{
+	return vec2(0.5 + atan(v.z, v.x) / (2.0 * M_PI), acos(v.y) / M_PI);
+}
 void main()
 {
 	struct_ray ray;
@@ -151,7 +166,8 @@ void main()
 		surface.l = ray.far;
 		surface.t = false;
 	}
-	gl_FragColor = argb(rgb);
+	vec3 s = texture(uniform_panorama, uv_sphere(ray.d));
+	gl_FragColor = argb((1.0 - ratio) * rgb + ratio * s);
 }
 </script>
 
@@ -167,6 +183,7 @@ var camera = {
 };
 var uniform_camera_up, uniform_camera_right, uniform_camera_origin;
 var uniform_camera_dir, uniform_camera_near, uniform_camera_far;
+var uniform_panorama, panorama_texture, panorama_image;
 var last_x, last_y;
 var request = 0;
 function update()
@@ -178,6 +195,7 @@ function update()
 	gl.uniform3f(uniform_camera_dir, camera.dir[0], camera.dir[1], camera.dir[2]);
 	gl.uniform1f(uniform_camera_near, camera.near);
 	gl.uniform1f(uniform_camera_far, camera.far);
+	gl.uniform1i(uniform_panorama, 0);
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	gl.vertexAttribPointer(attribute_vertex_position, 2, gl.FLOAT, false, 0, 0);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -234,6 +252,7 @@ function compile()
 	uniform_camera_dir = gl.getUniformLocation(program, "uniform_camera_dir");
 	uniform_camera_near = gl.getUniformLocation(program, "uniform_camera_near");
 	uniform_camera_far = gl.getUniformLocation(program, "uniform_camera_far");
+	uniform_panorma = gl.getUniformLocation(program, "uniform_panorama");
 }
 function v3_normalize(v)
 {
@@ -304,6 +323,18 @@ function mouse_up(event)
 {
 	document.removeEventListener("mousemove", mouse_move, false);
 }
+function onload_panorama()
+{
+	gl.bindTexture(gl.TEXTURE_2D, panorama_texture);
+	// wtf? no SRGB in webgl?
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, panorama_image);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	// linear interpolation in srgb color space .. just great :(
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+	draw();
+}
 function start()
 {
 	canvas = document.getElementById("canvas");
@@ -324,6 +355,12 @@ function start()
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
 	compile();
+
+	panorama_image = new Image();
+	panorama_texture = gl.createTexture();
+	panorama_image.onload = onload_panorama;
+	panorama_image.src = "panorama.jpg";
+
 	draw();
 
 	canvas.addEventListener("mousedown", mouse_down, false);
