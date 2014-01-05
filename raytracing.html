@@ -298,6 +298,7 @@ function m4_mul(a, b)
 }
 function mouse_move(event)
 {
+	event.preventDefault();
 	var x = event.clientX;
 	var y = event.clientY;
 	var x_rel = (x - last_x) / canvas.width;
