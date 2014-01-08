@@ -233,14 +233,23 @@ function mouse_up(event)
 }
 function onload_panorama()
 {
+	var width = panorama_image.width;
+	var height = panorama_image.height;
+	var info = "image width = " + width + ", height = " + height;
 	gl.bindTexture(gl.TEXTURE_2D, panorama_texture);
 	// wtf? no SRGB in webgl?
 	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, panorama_image);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+	if (width & (width - 1)) {
+		info = "image width " + width + " not power of 2. cant use horizontal texture coordinate repeating: you will see a vertical tearline."
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	} else {
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+	}
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 	// linear interpolation in srgb color space .. just great :(
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+	document.getElementById("output").innerHTML = info;
 	draw();
 }
 function load_panorama(src)
@@ -294,6 +303,7 @@ function toggle(button)
 <body onload="start();" style="color: silver; background-color: black">
 <p>toggle srgb correction: <button id="srgb-toggle" onclick="toggle(this);">disable</button></p>
 <p><input type="file" onchange="load_panorama(window.URL.createObjectURL(this.files[0]));"></p>
+<p><output id="output">no image loaded</output></p>
 <canvas id="canvas" style="border: none; cursor: default;" width="512" height="512">
 WebGL not enabled?
 </canvas>
