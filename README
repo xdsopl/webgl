@@ -13,8 +13,13 @@ https://rawgithub.com/xdsopl/webgl/master/srgb.html
 https://rawgithub.com/xdsopl/webgl/master/raytracing.html
 https://rawgithub.com/xdsopl/webgl/master/isosurface.html
 https://rawgithub.com/xdsopl/webgl/master/panorama.html
+https://rawgithub.com/xdsopl/webgl/master/cubemap.html
 
 panorama.jpg is downsampled using my "panorama" tool.
 got original panorama image (Creative Commons Attribution 3.0 Unported License) from here:
 http://www.hdri-hub.com/hdrishop/freesamples/freehdri/item/116-hdr-040-field-free
+
+cubemap/{pos,neg}{x,y,z}.jpg are downscaled via "convert -scale 128x128".
+got original cubemap image (Creative Commons Attribution 3.0 Unported License) from here:
+http://www.humus.name/index.php?page=Textures&ID=112
 
