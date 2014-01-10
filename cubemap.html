@@ -68,7 +68,7 @@ uniform samplerCube uniform_cubemap;
 void main()
 {
 	vec3 dir = normalize(varying_pixel_position);
-	vec3 sample = texture(uniform_cubemap, dir);
+	vec3 sample = texture(uniform_cubemap, vec3(-1.0, 1.0, 1.0) * dir);
 	gl_FragColor = argb(sample);
 }
 </script>
