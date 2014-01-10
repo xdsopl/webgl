@@ -253,6 +253,39 @@ function load_cubemap(src)
 		cubemap_image[i].src = src[i];
 	}
 }
+function load_cubemap_files(e)
+{
+	var info = "";
+	var num = e.files.length;
+	if (num < 6) {
+		info += "only " + num + " face" + (num == 1 ? "" : "s") + " selected. ";
+		info += "please select 6 faces named: posx.*, negx.*, posy.*, negy.*, posz.* and negz.*";
+		document.getElementById("output").innerHTML = info;
+		return;
+	}
+	var cubemap = [];
+	var sides = [ "posx", "negx", "posy", "negy", "posz", "negz" ];
+	for (var j = 0; j < 6; j++) {
+		for (var i = 0; i < 6; i++) {
+			var name = e.files[i].name;
+			var base = name.substr(0, name.lastIndexOf('.'));
+			if (base == sides[j]) {
+				cubemap.push(window.URL.createObjectURL(e.files[i]));
+				info += e.files[i].name + " ";
+				break;
+			}
+		}
+	}
+	num = cubemap.length;
+	if (num < 6) {
+		info += (6 - num) + " face" + (num == 5 ? " is" : "s are") + " missing. ";
+		info += "please select 6 faces named: posx.*, negx.*, posy.*, negy.*, posz.* and negz.*";
+		document.getElementById("output").innerHTML = info;
+		return;
+	}
+	document.getElementById("output").innerHTML = info;
+	load_cubemap(cubemap);
+}
 function start()
 {
 	canvas = document.getElementById("canvas");
@@ -275,7 +308,7 @@ function start()
 	compile();
 
 	var cubemap = [];
-	sides = [ "posx", "negx", "posy", "negy", "posz", "negz" ];
+	var sides = [ "posx", "negx", "posy", "negy", "posz", "negz" ];
 	for (var i = 0; i < 6; i++)
 		cubemap.push("cubemap" + "/" + sides[i] + ".jpg");
 	load_cubemap(cubemap);
@@ -300,6 +333,8 @@ function toggle(button)
 
 <body onload="start();" style="color: silver; background-color: black">
 <p>toggle srgb correction: <button id="srgb-toggle" onclick="toggle(this);">disable</button></p>
+<p><input type="file" multiple onchange="load_cubemap_files(this);"></p>
+<p><output id="output">no image loaded</output></p>
 <canvas id="canvas" style="border: none; cursor: default;" width="512" height="512">
 WebGL not enabled?
 </canvas>
