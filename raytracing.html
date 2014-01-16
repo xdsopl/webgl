@@ -44,9 +44,9 @@ vec4 argb(vec3 c)
 {
 	return vec4(srgb(c.r), srgb(c.g), srgb(c.b), 1.0);
 }
-vec3 texture(sampler2D sampler, vec2 uv)
+vec3 texture(samplerCube sampler, vec3 c)
 {
-	vec3 s = texture2D(sampler, uv).rgb;
+	vec3 s = textureCube(sampler, c).rgb;
 	return vec3(linear(s.r), linear(s.g), linear(s.b));
 }
 </script>
@@ -56,9 +56,9 @@ vec4 argb(vec3 c)
 {
 	return vec4(c, 1.0);
 }
-vec3 texture(sampler2D sampler, vec2 uv)
+vec3 texture(samplerCube sampler, vec3 c)
 {
-	return texture2D(sampler, uv).rgb;
+	return textureCube(sampler, c).rgb;
 }
 </script>
 
@@ -67,7 +67,7 @@ varying vec3 varying_pixel_position;
 uniform vec3 uniform_camera_origin;
 uniform float uniform_camera_near;
 uniform float uniform_camera_far;
-uniform sampler2D uniform_panorama;
+uniform samplerCube uniform_cubemap;
 const float M_PI = 3.14159265358979323846;
 struct struct_surface
 {
@@ -139,10 +139,6 @@ bool trace(inout struct_surface surface, struct_ray ray)
 	sphere_ray(surface, struct_sphere(vec3(0.3, 0.5, -0.7), 0.2), ray);
 	return surface.t;
 }
-vec2 uv_sphere(vec3 v)
-{
-	return vec2(0.5 + atan(v.z, v.x) / (2.0 * M_PI), acos(v.y) / M_PI);
-}
 void main()
 {
 	struct_ray ray;
@@ -166,7 +162,7 @@ void main()
 		surface.l = ray.far;
 		surface.t = false;
 	}
-	vec3 s = texture(uniform_panorama, uv_sphere(ray.d));
+	vec3 s = texture(uniform_cubemap, vec3(-1.0, 1.0, 1.0) * ray.d);
 	gl_FragColor = argb((1.0 - ratio) * rgb + ratio * s);
 }
 </script>
@@ -183,7 +179,7 @@ var camera = {
 };
 var uniform_camera_up, uniform_camera_right, uniform_camera_origin;
 var uniform_camera_dir, uniform_camera_near, uniform_camera_far;
-var uniform_panorama, panorama_texture, panorama_image;
+var uniform_cubemap, cubemap_texture, cubemap_image, cubemap_counter;
 var last_x, last_y;
 var request = 0;
 function update()
@@ -195,7 +191,7 @@ function update()
 	gl.uniform3f(uniform_camera_dir, camera.dir[0], camera.dir[1], camera.dir[2]);
 	gl.uniform1f(uniform_camera_near, camera.near);
 	gl.uniform1f(uniform_camera_far, camera.far);
-	gl.uniform1i(uniform_panorama, 0);
+	gl.uniform1i(uniform_cubemap, 0);
 	gl.bindBuffer(gl.ARRAY_BUFFER, quad_buffer);
 	gl.vertexAttribPointer(attribute_vertex_position, 2, gl.FLOAT, false, 0, 0);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -252,7 +248,7 @@ function compile()
 	uniform_camera_dir = gl.getUniformLocation(program, "uniform_camera_dir");
 	uniform_camera_near = gl.getUniformLocation(program, "uniform_camera_near");
 	uniform_camera_far = gl.getUniformLocation(program, "uniform_camera_far");
-	uniform_panorma = gl.getUniformLocation(program, "uniform_panorama");
+	uniform_cubemap = gl.getUniformLocation(program, "uniform_cubemap");
 }
 function v3_normalize(v)
 {
@@ -324,17 +320,32 @@ function mouse_up(event)
 {
 	document.removeEventListener("mousemove", mouse_move, false);
 }
-function onload_panorama()
+function onload_cubemap()
 {
-	gl.bindTexture(gl.TEXTURE_2D, panorama_texture);
+	if (++cubemap_counter < 6)
+		return;
+	cubemap_texture = gl.createTexture();
+	gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemap_texture);
 	// wtf? no SRGB in webgl?
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, panorama_image);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	for (var i = 0; i < 6; i++)
+		gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cubemap_image[i]);
+	// gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+	// gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	// gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 	// linear interpolation in srgb color space .. just great :(
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+	gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	draw();
+}
+function load_cubemap(src)
+{
+	cubemap_counter = 0;
+	cubemap_image = [];
+	for (var i = 0; i < 6; i++) {
+		cubemap_image[i] = new Image();
+		cubemap_image[i].onload = onload_cubemap;
+		cubemap_image[i].src = src[i];
+	}
 }
 function start()
 {
@@ -357,10 +368,11 @@ function start()
 
 	compile();
 
-	panorama_image = new Image();
-	panorama_texture = gl.createTexture();
-	panorama_image.onload = onload_panorama;
-	panorama_image.src = "panorama.jpg";
+	var cubemap = [];
+	var sides = [ "posx", "negx", "posy", "negy", "posz", "negz" ];
+	for (var i = 0; i < 6; i++)
+		cubemap.push("cubemap" + "/" + sides[i] + ".jpg");
+	load_cubemap(cubemap);
 
 	draw();
 
