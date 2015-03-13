@@ -1313,9 +1313,9 @@ function toggle(button)
 <body onload="start();" style="color: silver; background-color: black">
 <p>toggle srgb correction: <button id="srgb-toggle" onclick="toggle(this);">disable</button> choose color shader: <button onclick="set_shader('red-green');">red-green</button><button onclick="set_shader('boring');">boring</button><button onclick="set_shader('fancy');">fancy</button></p>
 <p><button onclick="heart();">heart</button><button onclick="torus();">torus</button><button onclick="cross();">cross</button><button onclick="paraboloid();">paraboloid</button><button onclick="cone();">cone</button><button onclick="cylinder();">cylinder</button><button onclick="chmutov();">chmutov</button><button onclick="sextic();">sextic</button></p>
-<p><input type="range" id="a-input" onchange="set_a(this.value); draw();" min="0" max="1" step="0.01" value="1"><span id="a-output">a=1</span></p>
-<p><input type="range" id="radius-input" onchange="set_radius(this.value); draw();" min="0.25" max="5" step="0.01" value="1"><span id="radius-output">radius=1</span></p>
-<p><input type="range" id="zoom-input" onchange="set_zoom(this.value); draw();" min="0.25" max="5" step="0.01" value="1"><span id="zoom-output">zoom=1</span></p>
+<p><input type="range" id="a-input" oninput="set_a(this.value); draw();" min="0" max="1" step="0.01" value="1"><span id="a-output">a=1</span></p>
+<p><input type="range" id="radius-input" oninput="set_radius(this.value); draw();" min="0.25" max="5" step="0.01" value="1"><span id="radius-output">radius=1</span></p>
+<p><input type="range" id="zoom-input" oninput="set_zoom(this.value); draw();" min="0.25" max="5" step="0.01" value="1"><span id="zoom-output">zoom=1</span></p>
 <canvas id="canvas" style="border: none; cursor: default;" width="512" height="512">
 WebGL not enabled?
 </canvas>
