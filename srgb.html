@@ -23,7 +23,7 @@ float srgb(float v)
 {
 	v = clamp(v, 0.0, 1.0);
 #if 1
-	float K0 = 0.03928;
+	float K0 = 0.04045;
 	float a = 0.055;
 	float phi = 12.92;
 	float gamma = 2.4;
